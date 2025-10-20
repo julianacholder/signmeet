@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Video, Plus, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Video, Plus, Clock, Users, CalendarClock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -50,27 +50,28 @@ export default function CandidateDashboardPage() {
   const jobListings = [
     {
       id: 1,
-      instructorName: 'Prashant Kumar Singh',
+      instructorName: 'Google LLC',
       date: '25/2/2023',
       courseType: 'FRONTEND',
-      courseTitle: 'Understanding Concept Of React'
+      courseTitle: 'Software Engineer Role'
     },
     {
       id: 2,
-      instructorName: 'Ravi Kumar',
+      instructorName: 'Amazon Inc',
       date: '25/2/2023',
-      courseType: 'FRONTEND',
-      courseTitle: 'Understanding Concept Of React'
+      courseType: 'TECHNOLOGY',
+      courseTitle: 'Product Manager Role'
     }
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-8 pr-5">
       <div className="flex gap-8">
         {/* Left Column */}
         <div className="flex-1">
           {/* Welcome Section */}
-          <div className="mb-8">
+         
+          <div className="mb-8 mt-20 text-center">
             <h1 className="text-3xl font-bold mb-2">Welcome, Juliana</h1>
             <p className="text-gray-600">
               Your career journey just got clearer. Use RSL-Connect to<br />
@@ -78,16 +79,16 @@ export default function CandidateDashboardPage() {
             </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            <ActionButton icon={<Video className="w-6 h-6" />} label="New Meeting" />
-            <ActionButton icon={<Plus className="w-6 h-6" />} label="Join Meeting" />
-            <ActionButton icon={<Clock className="w-6 h-6" />} label="Schedule" />
-            <ActionButton icon={<Users className="w-6 h-6" />} label="People" />
-          </div>
-
+       {/* Action Buttons */}
+<div className="grid grid-cols-2  gap-y-6 mb-8 max-w-3xs mx-auto">
+  <ActionButton icon={<Video className="w-9.5 h-9.5" fill="currentColor" />} label="New Meeting" />
+  <ActionButton icon={<Plus className="w-9.5 h-9.5" strokeWidth={3} />} label="Join Meeting" />
+  <ActionButton icon={<CalendarDays className="w-9 h-9" strokeWidth={3}/>} label="Schedule" />
+  <ActionButton icon={<Users className="w-9 h-9" fill="currentColor" />} label="People" />
+</div>
+          
           {/* Find Jobs Section */}
-          <Card>
+          <Card className='gap-4s'>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Find Jobs</CardTitle>
@@ -99,9 +100,9 @@ export default function CandidateDashboardPage() {
             <CardContent>
               {/* Table Header */}
               <div className="grid grid-cols-4 gap-4 px-4 py-3 bg-muted rounded-lg mb-3 text-xs font-semibold text-muted-foreground">
-                <div>INSTRUCTOR NAME & DATE</div>
-                <div>COURSE TYPE</div>
-                <div>COURSE TITLE</div>
+                <div>COMPANY NAME</div>
+                <div>COMPANY TYPE</div>
+                <div>JOB TITLE</div>
                 <div>ACTIONS</div>
               </div>
 
@@ -147,19 +148,17 @@ export default function CandidateDashboardPage() {
         </div>
 
         {/* Right Column */}
-        <div className="w-96">
+        <div className="w-90">
           {/* Calendar Widget */}
-          <Card className="mb-6">
+          <Card className="mb-6 py-4 gap-3">
             <CardHeader>
               <CardTitle>Calendar</CardTitle>
             </CardHeader>
             <CardContent>
               <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md border"
-              />
+  mode="multiple"
+  className="rounded-md w-full [&_.rdp-day_selected]:bg-primary/30 [&_.rdp-day_selected:hover]:bg-primary/40"
+/>
             </CardContent>
           </Card>
 
@@ -169,7 +168,7 @@ export default function CandidateDashboardPage() {
               <div className="flex items-center justify-between">
                 <CardTitle>Scheduled Interviews</CardTitle>
                 <Select value={selectedView} onValueChange={setSelectedView}>
-                  <SelectTrigger className="w-24">
+                  <SelectTrigger className="w-26">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -179,37 +178,44 @@ export default function CandidateDashboardPage() {
                 </Select>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {interviews.map((interview) => (
-                  <Card key={interview.id} className="border-l-4 border-l-primary">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">{interview.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <CalendarIcon className="w-4 h-4" />
-                          <span>{interview.date}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          <span>{interview.time}</span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-muted-foreground">
-                        Interviewer: {interview.interviewer}
-                      </p>
-                      
-                      <Button className="w-full" size="sm">
-                        RSL Translation Active
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+           <CardContent>
+  <div className="space-y-4">
+    {interviews.map((interview, index) => (
+      <div key={interview.id}>
+        <div className="border-l-4 border-l-[#1745C1] ">
+          <CardHeader className="gap-1 px-3">
+            <CardTitle className="text-base">{interview.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 px-3">
+            <div className="flex items-center gap-5 text-xs bg-gray-50 rounded-sm border px-2 py-0.5 w-fit">
+              <div className="flex items-center gap-1">
+                <CalendarIcon className="w-4 h-4" />
+                <span>{interview.date}</span>
               </div>
-            </CardContent>
+              <div className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                <span>{interview.time}</span>
+              </div>
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              Interviewer: {interview.interviewer}
+            </p>
+            
+            <p className="text-xs text-[#00BFFF] bg-[#E5F9FF] w-fit p-1 rounded-sm">
+              RSL Translation Active
+            </p>
+          </CardContent>
+        </div>
+        
+        
+        {index < interviews.length - 1 && (
+          <div className="border-b border-gray-200 my-4"></div>
+        )}
+      </div>
+    ))}
+  </div>
+</CardContent>
           </Card>
         </div>
       </div>
@@ -219,13 +225,13 @@ export default function CandidateDashboardPage() {
 
 function ActionButton({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <Button 
-      className="flex flex-col items-center gap-3 h-auto py-6 bg-primary hover:bg-primary/90 text-white"
-    >
-      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+    <div className='flex flex-col items-center text-center gap-2'>
+      <button 
+        className="flex items-center justify-center h-20 w-20 bg-primary hover:bg-primary/90 text-white rounded-3xl transition-colors"
+      >
         {icon}
-      </div>
-      <span className="font-medium text-sm">{label}</span>
-    </Button>
+      </button>
+      <span className="text-sm">{label}</span>
+    </div>
   );
 }

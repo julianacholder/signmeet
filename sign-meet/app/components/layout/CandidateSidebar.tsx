@@ -1,6 +1,6 @@
 'use client';
 
-import { Video, Calendar, User, Clock } from 'lucide-react';
+import { Video, Calendar, User, Clock, Home, Ban, CalendarDays } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -12,26 +12,22 @@ export default function CandidateSidebar() {
     {
       label: 'Dashboard',
       href: '/candidate/dashboard',
-      icon: (
-        <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-          <div className="w-2 h-2 bg-white rounded-full"></div>
-        </div>
-      ),
+      icon: <Home className="w-4 h-4" />,
     },
     {
       label: 'Practice',
       href: '/candidate/practice',
-      icon: <Video className="w-5 h-5" />,
+      icon: <Video className="w-4 h-4" />,
     },
     {
       label: 'Interview',
       href: '/candidate/interview',
-      icon: <Calendar className="w-5 h-5" />,
+      icon: <Calendar className="w-4 h-4" />,
     },
     {
       label: 'My profile',
       href: '/candidate/profile',
-      icon: <User className="w-5 h-5" />,
+      icon: <User className="w-4 h-4" />,
     },
   ];
 
@@ -46,13 +42,13 @@ export default function CandidateSidebar() {
       label: 'Rescheduled meetings',
       value: '15',
       subtext: 'This Month',
-      icon: <Clock className="w-4 h-4 text-gray-400" />,
+      icon: <CalendarDays className="w-4 h-4 text-gray-400" />,
     },
     {
       label: 'Cancelled meetings',
       value: '21',
       subtext: 'This Month',
-      icon: <Clock className="w-4 h-4 text-gray-400" />,
+      icon: <Ban className="w-4.5 h-4.5 text-gray-400" />,
     },
   ];
 
