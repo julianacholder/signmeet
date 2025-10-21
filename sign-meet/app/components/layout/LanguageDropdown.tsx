@@ -34,10 +34,10 @@ export default function LanguageDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center cursor-pointer p-2 text-black rounded-lg hover:bg-primary/10 transition-colors">
+        <div className="flex items-center cursor-pointer p-2 text-black rounded-lg hover:bg-primary/10 transition-colors">
           <span className="font-medium">{language}</span>
           <ChevronDown className="w-4 h-4 ml-1" />
-        </button>
+        </div>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-40">

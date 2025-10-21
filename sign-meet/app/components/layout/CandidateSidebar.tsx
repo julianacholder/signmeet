@@ -20,8 +20,8 @@ export default function CandidateSidebar() {
       icon: <Video className="w-4 h-4" />,
     },
     {
-      label: 'Interview',
-      href: '/candidate/interview',
+      label: 'Schedule',
+      href: '/candidate/schedule',
       icon: <Calendar className="w-4 h-4" />,
     },
     {
@@ -61,5 +61,12 @@ export default function CandidateSidebar() {
     }
   };
 
-  return <Sidebar navItems={navItems} stats={stats} onLogout={handleLogout} />;
+  return (
+    <Sidebar 
+      navItems={navItems} 
+      stats={stats} 
+      settingsHref="/candidate/settings"  
+      onLogout={handleLogout} 
+    />
+  );
 }
