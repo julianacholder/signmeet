@@ -1,7 +1,15 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
+import TopCountriesMap from '@/app/components/metrics/TopCountriesMap';
+import InterviewTrendsChart from '@/app/components/metrics/InterviewTrendsChart';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Users, 
@@ -9,18 +17,64 @@ import {
   Clock, 
   CheckCircle, 
   Activity,
-  Calendar,
-  BarChart3,
-  Globe
+  CalendarIcon,
+  ArrowUpRight,
+  MessagesSquare
 } from 'lucide-react';
+import { useState } from 'react';
+
+const chartData = [
+  { month: 'Dec 18', growth: 10000 },
+  { month: 'Dec 19', growth: 35000 },
+  { month: 'Dec 20', growth: 25000 },
+  { month: 'Dec 21', growth: 5000 },
+  { month: 'Dec 22', growth: 12000 },
+  { month: 'Dec 23', growth: 28000 },
+  { month: 'Dec 24', growth: 27000 },
+];
+
+const statsData = [
+    {
+      label: 'Growth',
+      value: '23,430',
+      change: '23%',
+      changeValue: '+412',
+      isPositive: true,
+      icon: TrendingUp,
+      highlighted: true
+    },
+    {
+      label: 'Follow',
+      value: '25,592',
+      change: '23%',
+      changeValue: '+804',
+      isPositive: true,
+      icon: MessagesSquare
+    },
+    {
+      label: 'Unfollow',
+      value: '100',
+      change: '13%',
+      changeValue: '-4',
+      isPositive: false,
+      icon: MessagesSquare
+    }
+  ];
+
+  const handlePeriodChange = (value: string) => {
+    console.log('Period changed to:', value);
+    // Add your logic to fetch new data based on period
+  };
+
+
 
 export default function CompanyDashboardPage() {
-  // Sample data based on the screenshot
+ const [selectedView, setSelectedView] = useState('weekly');
   const metrics = [
     {
       label: 'Interviews',
       value: '980K',
-      change: '+20%',
+      change: '20%',
       subtext: 'This Month',
       icon: Users,
       color: 'text-blue-600',
@@ -29,7 +83,7 @@ export default function CompanyDashboardPage() {
     {
       label: 'Successful Hires',
       value: '980K',
-      change: '+20%',
+      change: '20%',
       subtext: 'This Month',
       icon: CheckCircle,
       color: 'text-green-600',
@@ -38,7 +92,7 @@ export default function CompanyDashboardPage() {
     {
       label: 'Translation time',
       value: '980K',
-      change: '+26%',
+      change: '26%',
       subtext: 'This Month',
       icon: Clock,
       color: 'text-purple-600',
@@ -47,7 +101,7 @@ export default function CompanyDashboardPage() {
     {
       label: 'Accuracy',
       value: '980K',
-      change: '+10%',
+      change: '10%',
       subtext: 'This Month',
       icon: Activity,
       color: 'text-orange-600',
@@ -86,45 +140,31 @@ export default function CompanyDashboardPage() {
     }
   ];
 
-  const scheduledInterviews = [
+   const interviews = [
     {
+      id: 1,
       title: 'Software Developer Position',
       date: 'Jan 04, 2024',
       time: '10:00AM',
-      candidate: 'Sarah Johnson',
+      interviewer: 'Sarah Johnson',
       status: 'active'
     },
     {
+      id: 2,
       title: 'Marketing Coordinator Interview',
       date: 'Jan 04, 2024',
       time: '10:00AM',
-      candidate: 'Sarah Johnson',
+      interviewer: 'Sarah Johnson',
       status: 'active'
     },
     {
+      id: 3,
       title: 'Virtual Assistant',
       date: 'Jan 04, 2024',
       time: '12:00AM',
-      candidate: 'Sarah Johnson',
-      status: 'active'
-    },
-    {
-      title: 'Social Media Manager',
-      date: 'Jan 04, 2024',
-      time: '12:00AM',
-      candidate: 'Sarah Johnson',
+      interviewer: 'Sarah Johnson',
       status: 'active'
     }
-  ];
-
-  const interviewTrends = [
-    { month: 'Dec 18', growth: 23430, follow: 25592, unfollows: 100 },
-    { month: 'Dec 19', growth: 18000, follow: 22000, unfollows: 90 },
-    { month: 'Dec 20', growth: 28000, follow: 30000, unfollows: 95 },
-    { month: 'Dec 21', growth: 16000, follow: 18000, unfollows: 85 },
-    { month: 'Dec 22', growth: 22000, follow: 24000, unfollows: 88 },
-    { month: 'Dec 23', growth: 32000, follow: 35000, unfollows: 110 },
-    { month: 'Dec 24', growth: 30000, follow: 33000, unfollows: 105 }
   ];
 
   const topCountries = [
@@ -135,124 +175,60 @@ export default function CompanyDashboardPage() {
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-6">
       {/* Welcome Section */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Welcome, TechCorp Ltd</h1>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-4 gap-6 mb-8">
-        {metrics.map((metric, index) => (
-          <Card key={index}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-lg ${metric.bgColor}`}>
-                  <metric.icon className={`w-6 h-6 ${metric.color}`} />
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                  {metric.change}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">{metric.label}</p>
-                <p className="text-2xl font-bold mb-1">{metric.value}</p>
-                <p className="text-xs text-muted-foreground">{metric.subtext}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-3 gap-6">
-        {/* Left Column - 2 cols */}
-        <div className="col-span-2 space-y-6">
-          {/* Interview Trends Chart */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Interview Trends</CardTitle>
-                <select className="text-sm border border-gray-200 rounded-lg px-3 py-1.5">
-                  <option>Monthly</option>
-                  <option>Weekly</option>
-                  <option>Yearly</option>
-                </select>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-medium">Growth</span>
-                </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>
-                    <span className="text-muted-foreground">Growth</span>
-                    <span className="font-semibold">23,430</span>
-                    <span className="text-green-600">+12%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-purple-600 rounded-sm"></div>
-                    <span className="text-muted-foreground">Follow</span>
-                    <span className="font-semibold">25,592</span>
-                    <span className="text-green-600">+90%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-orange-400 rounded-sm"></div>
-                    <span className="text-muted-foreground">Unfollows</span>
-                    <span className="font-semibold">100</span>
-                    <span className="text-green-600">+2%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Simple Bar Chart */}
-              <div className="flex items-end gap-4 h-64">
-                {interviewTrends.map((data, index) => (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full flex flex-col gap-1 items-center justify-end flex-1">
-                      <div 
-                        className="w-full bg-blue-600 rounded-t"
-                        style={{ height: `${(data.growth / 35000) * 100}%` }}
-                      ></div>
+      <div className="flex gap-6">
+        {/* Left Column */}
+        <div className="w-[65%] space-y-6">
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-4 gap-6 mb-8 bg-white rounded-lg shadow p-3">
+            {metrics.map((metric, index) => (
+              <div className='' key={index}>
+                <div className="p-2 border-r">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className='flex items-center gap-2'>
+                      <div className={`p-2 rounded-full w-fit bg-[#E6E9FF]`}>
+                        <metric.icon className={`w-5 h-5 text-primary`} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{metric.label}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{data.month}</span>
                   </div>
-                ))}
+                  <div>
+                    <p className="text-xl font-bold mb-1">{metric.value}</p>
+                    <div className='flex items-center gap-2'>
+                      <p className="text-xs text-muted-foreground">{metric.subtext}</p>
+                      <div className="text-sm font-medium text-lightblue">
+                        <ArrowUpRight className="inline w-4 h-4 mr-1" />
+                        {metric.change}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
+
+          {/* Interview Trends Chart  */}
+                <InterviewTrendsChart
+            title="Interview Trends"
+            chartData={chartData}
+            stats={statsData}
+            periodLabel="Growth"
+            dateRange="Jun 2023 - Dec 2023"
+            onPeriodChange={handlePeriodChange}
+            defaultPeriod="monthly"
+          />
 
           {/* Top Countries */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Countries</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {topCountries.map((country, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{country.name}</span>
-                        <span className="text-sm font-semibold">{country.value.toLocaleString()}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all"
-                          style={{ width: `${country.percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <TopCountriesMap />
         </div>
 
         {/* Right Column */}
-        <div className="space-y-6">
+        <div className="w-[35%] space-y-6">
           {/* Team Member Usage */}
           <Card>
             <CardHeader>
@@ -291,39 +267,55 @@ export default function CompanyDashboardPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Scheduled Interviews</CardTitle>
-                <select className="text-sm border border-gray-200 rounded-lg px-2 py-1">
-                  <option>Weekly</option>
-                  <option>Monthly</option>
-                </select>
+                <Select value={selectedView} onValueChange={setSelectedView}>
+                  <SelectTrigger className="w-26">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {scheduledInterviews.map((interview, index) => (
-                  <Card key={index} className="border-l-4 border-l-primary">
-                    <CardContent className="p-4">
-                      <h4 className="font-semibold text-sm mb-2">{interview.title}</h4>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{interview.date}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{interview.time}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Interviewer: {interview.candidate}
-                      </p>
-                      <Button size="sm" className="w-full">
-                        RSL Translation Active
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+           <CardContent>
+  <div className="space-y-4">
+    {interviews.map((interview, index) => (
+      <div key={interview.id}>
+        <div className="border-l-4 border-l-[#1745C1] ">
+          <CardHeader className="gap-1 px-3">
+            <CardTitle className="text-base">{interview.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 px-3">
+            <div className="flex items-center gap-5 text-xs bg-gray-50 rounded-sm border px-2 py-0.5 w-fit">
+              <div className="flex items-center gap-1">
+                <CalendarIcon className="w-4 h-4" />
+                <span>{interview.date}</span>
               </div>
-            </CardContent>
+              <div className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                <span>{interview.time}</span>
+              </div>
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              Interviewer: {interview.interviewer}
+            </p>
+            
+            <p className="text-xs text-[#00BFFF] bg-[#E5F9FF] w-fit p-1 rounded-sm">
+              RSL Translation Active
+            </p>
+          </CardContent>
+        </div>
+        
+        
+        {index < interviews.length - 1 && (
+          <div className="border-b border-gray-200 my-4"></div>
+        )}
+      </div>
+    ))}
+  </div>
+</CardContent>
           </Card>
         </div>
       </div>

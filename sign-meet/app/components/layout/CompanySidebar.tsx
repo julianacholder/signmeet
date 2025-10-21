@@ -1,7 +1,6 @@
-// app/components/layout/CompanySidebar.tsx
 'use client';
 
-import { BarChart, Calendar, Users, Clock } from 'lucide-react';
+import { Calendar, User, Clock, Home, CalendarDays, Ban, ChartNoAxesCombined, Users } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -13,30 +12,31 @@ export default function CompanySidebar() {
     {
       label: 'Dashboard',
       href: '/company/dashboard',
-      icon: (
-        <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-          <div className="w-2 h-2 bg-white rounded-full"></div>
-        </div>
-      ),
+      icon: <Home className="w-4 h-4" strokeWidth={2.5} />
     },
     {
       label: 'Schedule',
       href: '/company/schedule',
-      icon: <Calendar className="w-5 h-5" />,
+      icon: <Calendar className="w-5 h-5" strokeWidth={2.5} />,
+    },
+     {
+      label: 'Team',
+      href: '/company/team',
+      icon: <Users className="w-5 h-5" strokeWidth={2.5} />,
     },
     {
       label: 'DEI Metrics',
       href: '/company/dei-metrics',
-      icon: <BarChart className="w-5 h-5" />,
+      icon: <ChartNoAxesCombined className="w-5 h-5" strokeWidth={2.5} />,
     },
     {
       label: 'My profile',
       href: '/company/profile',
-      icon: <Users className="w-5 h-5" />,
+      icon: <User className="w-5 h-5" strokeWidth={2.5} />,
     },
   ];
 
-  const stats = [
+   const stats = [
     {
       label: 'No. of meetings',
       value: '36',
@@ -47,13 +47,13 @@ export default function CompanySidebar() {
       label: 'Rescheduled meetings',
       value: '15',
       subtext: 'This Month',
-      icon: <Clock className="w-4 h-4 text-gray-400" />,
+      icon: <CalendarDays className="w-4 h-4 text-gray-400" />,
     },
     {
       label: 'Cancelled meetings',
       value: '21',
       subtext: 'This Month',
-      icon: <Clock className="w-4 h-4 text-gray-400" />,
+      icon: <Ban className="w-4.5 h-4.5 text-gray-400" />,
     },
   ];
 
@@ -66,5 +66,12 @@ export default function CompanySidebar() {
     }
   };
 
-  return <Sidebar navItems={navItems} stats={stats} onLogout={handleLogout} />;
+  return (
+    <Sidebar 
+      navItems={navItems} 
+      stats={stats} 
+      settingsHref="/company/settings"  
+      onLogout={handleLogout} 
+    />
+  );
 }

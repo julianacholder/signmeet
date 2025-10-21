@@ -72,7 +72,7 @@ export default function Sidebar({
                         {item.icon}
                       </div>
                     </div>
-                    <span className={`text-sm ${isActive ? 'font-medium' : ''}`}>{item.label}</span>
+                    <span className={`text-sm ${isActive ? 'font-medium' : 'font-medium'}`}>{item.label}</span>
                   </Link>
                 </li>
               );

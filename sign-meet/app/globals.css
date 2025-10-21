@@ -6,6 +6,7 @@
 :root {
   --primary: #2E3890;  
   --primary-hover: #1F2660;
+  --lightblue: #4C58C0;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
@@ -19,7 +20,7 @@
   --muted: oklch(0.968 0.007 247.896);
   --muted-foreground: oklch(0.554 0.046 257.417);
   --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: #2E3890;  /* ← And this */
+  --accent-foreground: #2E3890; 
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
@@ -43,6 +44,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-lightblue: var(--lightblue);
   --color-primary-hover: var(--primary-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
