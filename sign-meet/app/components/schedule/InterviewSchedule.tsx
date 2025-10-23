@@ -3,10 +3,9 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock, Video, Copy, Plus } from 'lucide-react';
-import ScheduleMeetingModal from '@components/modals/ScheduleMeeting'; // Add this import
+import ScheduleMeetingModal from '@components/modals/ScheduleMeeting'; 
 
 interface Interview {
   id: number;
@@ -57,8 +56,8 @@ export default function InterviewSchedule({
               {userRole === 'candidate' ? 'Interview Scheduled' : 'Scheduled Interviews'}
             </h1>
             <Button 
-              className="bg-primary hover:bg-hoverPrimary"
-              onClick={() => setIsScheduleModalOpen(true)} // Update this
+              className="bg-primary hover:bg-hoverPrimary cursor-pointer"
+              onClick={() => setIsScheduleModalOpen(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Event

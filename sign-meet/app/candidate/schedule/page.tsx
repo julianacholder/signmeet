@@ -43,7 +43,7 @@ export default function CandidateSchedulePage() {
     <InterviewSchedule
       userRole="candidate"
       interviews={candidateInterviews}
-      onCreateEvent={() => console.log('Create event')}
+      
       onJoinMeeting={(link) => window.open(link, '_blank')}
     />
   );
