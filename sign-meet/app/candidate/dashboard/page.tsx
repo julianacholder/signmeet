@@ -14,12 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import NewMeetingModal from '@/app/components/modals/NewMeetingModal';
+import JoinMeetingModal from '@/app/components/modals/JoinMeetingModal';
+import ScheduleMeetingModal from '@/app/components/modals/ScheduleMeeting';
 
 export default function CandidateDashboardPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedView, setSelectedView] = useState('weekly');
+  const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
+  const [isJoinMeetingOpen, setIsJoinMeetingOpen] = useState(false);
+  const [isScheduleMeetingOpen, setIsScheduleMeetingOpen] = useState(false);
 
-  // Sample data
   const interviews = [
     {
       id: 1,
@@ -79,13 +84,29 @@ export default function CandidateDashboardPage() {
             </p>
           </div>
 
-       {/* Action Buttons */}
-<div className="grid grid-cols-2  gap-y-6 mb-8 max-w-3xs mx-auto">
-  <ActionButton icon={<Video className="w-9.5 h-9.5" fill="currentColor" />} label="New Meeting" />
-  <ActionButton icon={<Plus className="w-9.5 h-9.5" strokeWidth={3} />} label="Join Meeting" />
-  <ActionButton icon={<CalendarDays className="w-9 h-9" strokeWidth={3}/>} label="Schedule" />
-  <ActionButton icon={<Users className="w-9 h-9" fill="currentColor" />} label="People" />
-</div>
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-y-6 mb-8 max-w-3xs mx-auto">
+            <ActionButton 
+              icon={<Video className="w-9.5 h-9.5" fill="currentColor" />} 
+              label="New Meeting"
+              onClick={() => setIsNewMeetingOpen(true)}
+            />
+            <ActionButton 
+              icon={<Plus className="w-9.5 h-9.5" strokeWidth={3} />} 
+              label="Join Meeting"
+              onClick={() => setIsJoinMeetingOpen(true)}
+            />
+           <ActionButton 
+          icon={<CalendarDays className="w-9 h-9" strokeWidth={3}/>} 
+          label="Schedule"
+          onClick={() => setIsScheduleMeetingOpen(true)}
+        />
+            <ActionButton 
+              icon={<Users className="w-9 h-9" fill="currentColor" />} 
+              label="People"
+              onClick={() => {/* Add people action */}}
+            />
+          </div>
           
           {/* Find Jobs Section */}
           <Card className='gap-4s'>
@@ -156,9 +177,9 @@ export default function CandidateDashboardPage() {
             </CardHeader>
             <CardContent>
               <Calendar
-  mode="multiple"
-  className="rounded-md w-full [&_.rdp-day_selected]:bg-primary/30 [&_.rdp-day_selected:hover]:bg-primary/40"
-/>
+                mode="multiple"
+                className="rounded-md w-full [&_.rdp-day_selected]:bg-primary/30 [&_.rdp-day_selected:hover]:bg-primary/40"
+              />
             </CardContent>
           </Card>
 
@@ -178,56 +199,71 @@ export default function CandidateDashboardPage() {
                 </Select>
               </div>
             </CardHeader>
-           <CardContent>
-  <div className="space-y-4">
-    {interviews.map((interview, index) => (
-      <div key={interview.id}>
-        <div className="border-l-4 border-l-[#1745C1] ">
-          <CardHeader className="gap-1 px-3">
-            <CardTitle className="text-base">{interview.title}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5 px-3">
-            <div className="flex items-center gap-5 text-xs bg-gray-50 rounded-sm border px-2 py-0.5 w-fit">
-              <div className="flex items-center gap-1">
-                <CalendarIcon className="w-4 h-4" />
-                <span>{interview.date}</span>
+            <CardContent>
+              <div className="space-y-4">
+                {interviews.map((interview, index) => (
+                  <div key={interview.id}>
+                    <div className="border-l-4 border-l-[#1745C1] ">
+                      <CardHeader className="gap-1 px-3">
+                        <CardTitle className="text-base">{interview.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-1.5 px-3">
+                        <div className="flex items-center gap-5 text-xs bg-gray-50 rounded-sm border px-2 py-0.5 w-fit">
+                          <div className="flex items-center gap-1">
+                            <CalendarIcon className="w-4 h-4" />
+                            <span>{interview.date}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            <span>{interview.time}</span>
+                          </div>
+                        </div>
+                        
+                        <p className="text-xs text-muted-foreground">
+                          Interviewer: {interview.interviewer}
+                        </p>
+                        
+                        <p className="text-xs text-[#00BFFF] bg-[#E5F9FF] w-fit p-1 rounded-sm">
+                          RSL Translation Active
+                        </p>
+                      </CardContent>
+                    </div>
+                    
+                    {index < interviews.length - 1 && (
+                      <div className="border-b border-gray-200 my-4"></div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{interview.time}</span>
-              </div>
-            </div>
-            
-            <p className="text-xs text-muted-foreground">
-              Interviewer: {interview.interviewer}
-            </p>
-            
-            <p className="text-xs text-[#00BFFF] bg-[#E5F9FF] w-fit p-1 rounded-sm">
-              RSL Translation Active
-            </p>
-          </CardContent>
-        </div>
-        
-        
-        {index < interviews.length - 1 && (
-          <div className="border-b border-gray-200 my-4"></div>
-        )}
-      </div>
-    ))}
-  </div>
-</CardContent>
+            </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Modals */}
+      <NewMeetingModal
+        isOpen={isNewMeetingOpen}
+        onClose={() => setIsNewMeetingOpen(false)}
+      />
+      
+      <JoinMeetingModal
+        isOpen={isJoinMeetingOpen}
+        onClose={() => setIsJoinMeetingOpen(false)}
+      />
+      <ScheduleMeetingModal
+        isOpen={isScheduleMeetingOpen}
+        onClose={() => setIsScheduleMeetingOpen(false)}
+      />
     </div>
   );
 }
 
-function ActionButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function ActionButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
   return (
     <div className='flex flex-col items-center text-center gap-2'>
       <button 
-        className="flex items-center justify-center h-20 w-20 bg-primary hover:bg-primary/90 text-white rounded-3xl transition-colors"
+        onClick={onClick}
+        className="cursor-pointer flex items-center justify-center h-20 w-20 bg-primary hover:bg-primary/90 text-white rounded-3xl transition-colors"
       >
         {icon}
       </button>

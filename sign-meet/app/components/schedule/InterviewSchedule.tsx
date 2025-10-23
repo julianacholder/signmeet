@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock, Video, Copy, Plus } from 'lucide-react';
+import ScheduleMeetingModal from '@components/modals/ScheduleMeeting'; // Add this import
 
 interface Interview {
   id: number;
   title: string;
   date: string;
   time: string;
-  interviewer?: string; // Optional for company view
-  candidate?: string;   // Optional for candidate view
+  interviewer?: string;
+  candidate?: string;
   type: 'RSL Translation Active' | 'Scheduled' | 'Completed';
   meetingId?: string;
   meetingLink?: string;
@@ -23,19 +24,18 @@ interface Interview {
 interface InterviewScheduleProps {
   userRole: 'candidate' | 'company';
   interviews: Interview[];
-  onCreateEvent?: () => void;
   onJoinMeeting?: (meetingLink: string) => void;
 }
 
 export default function InterviewSchedule({ 
   userRole, 
   interviews,
-  onCreateEvent,
   onJoinMeeting
 }: InterviewScheduleProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showMeetingDetails, setShowMeetingDetails] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false); // Add this state
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -58,7 +58,7 @@ export default function InterviewSchedule({
             </h1>
             <Button 
               className="bg-primary hover:bg-hoverPrimary"
-              onClick={onCreateEvent}
+              onClick={() => setIsScheduleModalOpen(true)} // Update this
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Event
@@ -85,7 +85,6 @@ export default function InterviewSchedule({
                       </div>
                     </div>
                     
-                    {/* Show different info based on user role */}
                     <p className="text-xs text-muted-foreground">
                       {userRole === 'candidate' 
                         ? `Interviewer: ${interview.interviewer}` 
@@ -259,6 +258,12 @@ export default function InterviewSchedule({
           </Card>
         </div>
       )}
+
+      {/* Schedule Meeting Modal */}
+      <ScheduleMeetingModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+      />
     </div>
   );
 }
