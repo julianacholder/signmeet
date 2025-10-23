@@ -22,7 +22,7 @@ export default function CompanySchedulePage() {
     <InterviewSchedule
       userRole="company"
       interviews={companyInterviews}
-      onCreateEvent={() => console.log('Create event')}
+     
       onJoinMeeting={(link) => window.open(link, '_blank')}
     />
   );
