@@ -1,73 +1,104 @@
 'use client';
 
-import { useState } from 'react';
-import { Video, Plus, Clock, Users, CalendarClock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
+import InteractiveCalendar from '@components/schedule/InteractiveCalendar';
+import { Video, Plus, Users, Calendar as CalendarDays, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import UpcomingInterviews from '@/app/components/dashboard/UpcomingInterviews';
 import NewMeetingModal from '@/app/components/modals/NewMeetingModal';
 import JoinMeetingModal from '@/app/components/modals/JoinMeetingModal';
 import ScheduleMeetingModal from '@/app/components/modals/ScheduleMeeting';
+import { JobsSectionSkeleton } from '@components/skeletons/JobsSkeleton';
 
 export default function CandidateDashboardPage() {
+  const router = useRouter();
+  const { user, profile, loading } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedView, setSelectedView] = useState('weekly');
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [isJoinMeetingOpen, setIsJoinMeetingOpen] = useState(false);
   const [isScheduleMeetingOpen, setIsScheduleMeetingOpen] = useState(false);
+  const [interviews, setInterviews] = useState([]);
+  
+  // Job search states
+  const [jobListings, setJobListings] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
 
-  const interviews = [
-    {
-      id: 1,
-      title: 'Software Developer Position',
-      date: 'Jan 04, 2024',
-      time: '10:00AM',
-      interviewer: 'Sarah Johnson',
-      status: 'active'
-    },
-    {
-      id: 2,
-      title: 'Marketing Coordinator Interview',
-      date: 'Jan 04, 2024',
-      time: '10:00AM',
-      interviewer: 'Sarah Johnson',
-      status: 'active'
-    },
-    {
-      id: 3,
-      title: 'Virtual Assistant',
-      date: 'Jan 04, 2024',
-      time: '12:00AM',
-      interviewer: 'Sarah Johnson',
-      status: 'active'
-    }
-  ];
+  // Fetch interviews
+  useEffect(() => {
+    const fetchInterviews = async () => {
+      try {
+        const response = await fetch('/api/interviews');
+        const data = await response.json();
+        if (response.ok) {
+          setInterviews(data.interviews);
+        }
+      } catch (error) {
+        console.error('Error fetching interviews:', error);
+      }
+    };
 
-  const jobListings = [
-    {
-      id: 1,
-      instructorName: 'Google LLC',
-      date: '25/2/2023',
-      courseType: 'FRONTEND',
-      courseTitle: 'Software Engineer Role'
-    },
-    {
-      id: 2,
-      instructorName: 'Amazon Inc',
-      date: '25/2/2023',
-      courseType: 'TECHNOLOGY',
-      courseTitle: 'Product Manager Role'
+    if (user) {
+      fetchInterviews();
     }
-  ];
+  }, [user]);
+
+  // Fetch jobs on mount
+  useEffect(() => {
+    if (user) {
+      fetchJobs();
+    }
+  }, [user]);
+
+  const fetchJobs = async () => {
+    setJobsLoading(true);
+    try {
+      // Always fetch diverse jobs for dashboard (no search)
+      const response = await fetch('/api/jobs/diverse');
+      const data = await response.json();
+      
+      if (data.success) {
+        setJobListings(data.jobs.slice(0, 3)); // Only show 3 jobs on dashboard
+      }
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  // Redirect if not authenticated or wrong user type
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push('/auth/login');
+      } else if (profile && profile.user_type !== 'deaf') {
+        router.push('/company/dashboard');
+      }
+    }
+  }, [user, profile, loading, router]);
+
+  // Show loading state for AUTH (entire page)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if no user or profile
+  if (!user || !profile) {
+    return null;
+  }
 
   return (
     <div className="p-8 pr-5">
@@ -75,9 +106,10 @@ export default function CandidateDashboardPage() {
         {/* Left Column */}
         <div className="flex-1">
           {/* Welcome Section */}
-         
           <div className="mb-8 mt-20 text-center">
-            <h1 className="text-3xl font-bold mb-2">Welcome, Juliana</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              Welcome, {profile?.full_name || 'User'}
+            </h1>
             <p className="text-gray-600">
               Your career journey just got clearer. Use RSL-Connect to<br />
               effortlessly manage join real-time sign language interviews.
@@ -96,11 +128,11 @@ export default function CandidateDashboardPage() {
               label="Join Meeting"
               onClick={() => setIsJoinMeetingOpen(true)}
             />
-           <ActionButton 
-          icon={<CalendarDays className="w-9 h-9" strokeWidth={3}/>} 
-          label="Schedule"
-          onClick={() => setIsScheduleMeetingOpen(true)}
-        />
+            <ActionButton 
+              icon={<CalendarDays className="w-9 h-9" strokeWidth={3}/>} 
+              label="Schedule"
+              onClick={() => setIsScheduleMeetingOpen(true)}
+            />
             <ActionButton 
               icon={<Users className="w-9 h-9" fill="currentColor" />} 
               label="People"
@@ -108,135 +140,116 @@ export default function CandidateDashboardPage() {
             />
           </div>
           
-          {/* Find Jobs Section */}
-          <Card className='gap-4s'>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Find Jobs</CardTitle>
-                <Button variant="link" className="text-primary">
-                  See All
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Table Header */}
-              <div className="grid grid-cols-4 gap-4 px-4 py-3 bg-muted rounded-lg mb-3 text-xs font-semibold text-muted-foreground">
-                <div>COMPANY NAME</div>
-                <div>COMPANY TYPE</div>
-                <div>JOB TITLE</div>
-                <div>ACTIONS</div>
-              </div>
-
-              {/* Job Listings */}
-              <div className="space-y-3">
-                {jobListings.map((job) => (
-                  <div 
-                    key={job.id} 
-                    className="grid grid-cols-4 gap-4 px-4 py-4 border rounded-lg items-center hover:bg-muted/50 transition-colors"
+          {/* Find Jobs Section - WITH SKELETON */}
+          {jobsLoading ? (
+            <JobsSectionSkeleton count={3} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Find Jobs</CardTitle>
+                  <Button 
+                    variant="link" 
+                    className="text-primary"
+                    onClick={() => router.push('/candidate/jobs')}
                   >
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>
-                          {job.instructorName.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-sm">{job.instructorName}</p>
-                        <p className="text-xs text-muted-foreground">{job.date}</p>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                        {job.courseType}
-                      </Badge>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm">{job.courseTitle}</p>
-                    </div>
-                    
-                    <div>
-                      <Button variant="secondary" size="sm" className="bg-blue-100 text-blue-700 hover:bg-blue-200">
-                        SHOW DETAILS
-                      </Button>
-                    </div>
+                    See All
+                  </Button>
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                {jobListings.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      No jobs available right now. Check back later!
+                    </p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                ) : (
+                  <>
+                    {/* Table Header */}
+                    <div className="grid grid-cols-4 gap-4 px-4 py-3 bg-muted rounded-lg mb-3 text-xs font-semibold text-muted-foreground">
+                      <div>COMPANY NAME</div>
+                      <div>JOB TYPE</div>
+                      <div>JOB TITLE</div>
+                      <div>ACTIONS</div>
+                    </div>
+
+                    {/* Job Listings */}
+                    <div className="space-y-3">
+                      {jobListings.map((job: any) => (
+                        <div 
+                          key={job.id} 
+                          className="grid grid-cols-4 gap-4 px-4 py-4 border rounded-lg items-center hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              {job.companyLogo ? (
+                                <AvatarImage src={job.companyLogo} alt={job.instructorName} />
+                              ) : null}
+                              <AvatarFallback>
+                                {job.instructorName?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">{job.instructorName}</p>
+                              <p className="text-xs text-muted-foreground">{job.date}</p>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                              {job.courseType}
+                            </Badge>
+                            {job.isRemote && (
+                              <Badge variant="secondary" className="bg-green-100 text-green-700 ml-1">
+                                REMOTE
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm font-medium">{job.courseTitle}</p>
+                            <p className="text-xs text-muted-foreground">{job.location}</p>
+                          </div>
+                          
+                          <div>
+                            <Button 
+                              variant="secondary" 
+                              size="sm" 
+                              className="bg-blue-100 text-blue-700 hover:bg-blue-200"
+                              onClick={() => window.open(job.applyLink, '_blank')}
+                            >
+                              APPLY NOW
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column */}
-        <div className="w-90">
-          {/* Calendar Widget */}
-          <Card className="mb-6 py-4 gap-3">
-            <CardHeader>
-              <CardTitle>Calendar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="multiple"
-                className="rounded-md w-full [&_.rdp-day_selected]:bg-primary/30 [&_.rdp-day_selected:hover]:bg-primary/40"
-              />
-            </CardContent>
-          </Card>
+        <div className="w-90 flex flex-col gap-4">
+          {/* Interactive Calendar */}
+          <InteractiveCalendar 
+            interviews={interviews}
+            onDateSelect={(date) => {
+              setDate(date);
+              setIsScheduleMeetingOpen(true);
+            }}
+          />
 
           {/* Scheduled Interviews */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Scheduled Interviews</CardTitle>
-                <Select value={selectedView} onValueChange={setSelectedView}>
-                  <SelectTrigger className="w-26">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {interviews.map((interview, index) => (
-                  <div key={interview.id}>
-                    <div className="border-l-4 border-l-[#1745C1] ">
-                      <CardHeader className="gap-1 px-3">
-                        <CardTitle className="text-base">{interview.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-1.5 px-3">
-                        <div className="flex items-center gap-5 text-xs bg-gray-50 rounded-sm border px-2 py-0.5 w-fit">
-                          <div className="flex items-center gap-1">
-                            <CalendarIcon className="w-4 h-4" />
-                            <span>{interview.date}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{interview.time}</span>
-                          </div>
-                        </div>
-                        
-                        <p className="text-xs text-muted-foreground">
-                          Interviewer: {interview.interviewer}
-                        </p>
-                        
-                        <p className="text-xs text-[#00BFFF] bg-[#E5F9FF] w-fit p-1 rounded-sm">
-                          RSL Translation Active
-                        </p>
-                      </CardContent>
-                    </div>
-                    
-                    {index < interviews.length - 1 && (
-                      <div className="border-b border-gray-200 my-4"></div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <UpcomingInterviews 
+            interviews={interviews}
+            onJoinMeeting={(link) => window.open(link, '_blank')}
+          />
         </div>
       </div>
 
@@ -250,6 +263,7 @@ export default function CandidateDashboardPage() {
         isOpen={isJoinMeetingOpen}
         onClose={() => setIsJoinMeetingOpen(false)}
       />
+      
       <ScheduleMeetingModal
         isOpen={isScheduleMeetingOpen}
         onClose={() => setIsScheduleMeetingOpen(false)}

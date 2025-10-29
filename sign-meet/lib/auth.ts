@@ -26,11 +26,14 @@ export async function getCurrentUserProfile() {
 
 export async function getUserType() {
   const profile = await getCurrentUserProfile();
-  return profile?.userType;
+  return profile?.userType; 
 }
 
 // Use Supabase Auth for sign out
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+  
+  // Redirect to login page after successful logout
+  window.location.href = '/auth/login';
 }

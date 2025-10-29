@@ -1,13 +1,10 @@
 'use client';
 
-import { Video, Calendar, User, Clock, Home, Ban, CalendarDays } from 'lucide-react';
+import { Video, Calendar, User, Clock, Home, Ban, CalendarDays, Search, SearchCheck } from 'lucide-react';
 import Sidebar from './Sidebar';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/client-auth';
 
 export default function CandidateSidebar() {
-  const router = useRouter();
-
   const navItems = [
     {
       label: 'Dashboard',
@@ -18,6 +15,11 @@ export default function CandidateSidebar() {
       label: 'Practice',
       href: '/candidate/practice',
       icon: <Video className="w-4 h-4" />,
+    },
+     {
+      label: 'Find Jobs',
+      href: '/candidate/jobs',
+      icon: <SearchCheck className="w-4 h-4" />,
     },
     {
       label: 'Schedule',
@@ -53,9 +55,11 @@ export default function CandidateSidebar() {
   ];
 
   const handleLogout = async () => {
+    console.log('Logout button clicked!'); // Add this
     try {
-      await supabase.auth.signOut();
-      router.push('/auth/login');
+      console.log('Calling signOut...'); // Add this
+      await signOut();
+      console.log('SignOut completed'); // Add this
     } catch (error) {
       console.error('Logout error:', error);
     }

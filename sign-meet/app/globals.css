@@ -126,4 +126,99 @@
 }
 
 
+/* ================================
+   Custom Toast Styling - SignMeet Brand
+   ================================ */
+
+/* Base toast styling */
+[data-sonner-toast] {
+  background: white !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+}
+
+/* Success toasts - Primary blue */
+[data-sonner-toast][data-type="success"] {
+  background: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon],
+[data-sonner-toast][data-type="success"] [data-title],
+[data-sonner-toast][data-type="success"] [data-description],
+[data-sonner-toast][data-type="success"] [data-content] * {
+  color: white !important;
+}
+
+/* Loading toasts - Light blue */
+[data-sonner-toast][data-type="loading"] {
+  background: var(--lightblue) !important;
+  color: white !important;
+  border-color: var(--lightblue) !important;
+}
+
+[data-sonner-toast][data-type="loading"] [data-icon],
+[data-sonner-toast][data-type="loading"] [data-title],
+[data-sonner-toast][data-type="loading"] [data-description] {
+  color: white !important;
+}
+
+/* Error toasts - Red */
+[data-sonner-toast][data-type="error"] {
+  background: var(--destructive) !important;
+  color: white !important;
+  border-color: var(--destructive) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon],
+[data-sonner-toast][data-type="error"] [data-title],
+[data-sonner-toast][data-type="error"] [data-description] {
+  color: white !important;
+}
+
+/* Info toasts - Muted */
+[data-sonner-toast][data-type="info"] {
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Toast action buttons */
+[data-sonner-toast] [data-button] {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: calc(var(--radius) - 2px) !important;
+  padding: 0.25rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-sonner-toast] [data-button]:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Toast close button */
+[data-sonner-toast] [data-close-button] {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  border: none !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Code blocks inside toasts (for meeting IDs) */
+[data-sonner-toast] code {
+  background: rgba(0, 0, 0, 0.1) !important;
+  padding: 0.125rem 0.375rem !important;
+  border-radius: 0.25rem !important;
+  font-family: ui-monospace, monospace !important;
+  font-size: 0.875rem !important;
+}
+
+
 
