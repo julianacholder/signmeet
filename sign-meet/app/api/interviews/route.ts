@@ -11,8 +11,9 @@ const interviewsCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (shorter than jobs since interviews change more often)
 
 export async function GET() {
-  const cookieStore = await cookies(); 
-  const supabase = createRouteHandlerClient({ cookies });
+const supabase = createRouteHandlerClient({ 
+  cookies: () => cookies() 
+});
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {

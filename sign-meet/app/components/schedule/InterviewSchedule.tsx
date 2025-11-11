@@ -283,7 +283,10 @@ export default function InterviewSchedule({
                               <Button 
                                 size="sm"
                                 className="bg-primary hover:bg-primary/90"
-                                onClick={() => onJoinMeeting?.(interview.meetingLink)}
+                                
+                                onClick={() => {
+  window.location.href = `/meeting/${interview.meetingId}`;
+}}
                               >
                                 <Video className="w-4 h-4 mr-2" />
                                 Join
@@ -496,9 +499,8 @@ export default function InterviewSchedule({
                 <Button
                   className="flex-1"
                   onClick={() => {
-                    window.open(selectedInterview.meetingLink, '_blank');
-                    setShowMeetingDetails(false);
-                  }}
+  window.location.href = `/meeting/${selectedInterview.meetingId}`;
+}}
                 >
                   <Video className="w-4 h-4 mr-2" />
                   Join Meeting

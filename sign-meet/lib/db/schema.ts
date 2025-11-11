@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, varchar, integer } from 'drizzle-orm/pg-core';
 
 
 export const profiles = pgTable('profiles', {
@@ -79,6 +79,35 @@ export const meetingParticipants = pgTable('meeting_participants', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Call sessions table (tracks individual join/leave events)
+export const callSessions = pgTable('call_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Meeting reference
+  meetingId: varchar('meeting_id', { length: 100 }).notNull(),
+  interviewId: uuid('interview_id').references(() => interviews.id, { onDelete: 'cascade' }),
+  
+  // Participant info
+  // ✅ FIXED: Made nullable to support guest users who don't have a profile
+  userId: uuid('user_id').references(() => profiles.id, { onDelete: 'set null' }), // Removed .notNull()
+  userName: text('user_name').notNull(), // ✅ ADDED: .notNull() since we always need a display name
+  userRole: varchar('user_role', { length: 50 }), // 'candidate' | 'interviewer' | 'guest'
+  
+  // Session timing
+  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
+  leftAt: timestamp('left_at', { withTimezone: true }),
+  duration: integer('duration'), // In seconds, calculated when leftAt is set
+  
+  // Connection info
+  disconnectReason: varchar('disconnect_reason', { length: 50 }), 
+  // 'left_intentionally' | 'connection_lost' | 'tab_closed' | 'kicked' | 'idle_timeout'
+  
+  peerId: text('peer_id'), // PeerJS peer ID for this session
+  
+  // Metadata
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
 // Types
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
@@ -87,3 +116,5 @@ export type Interview = typeof interviews.$inferSelect;
 export type NewInterview = typeof interviews.$inferInsert;
 export type MeetingParticipant = typeof meetingParticipants.$inferSelect;
 export type NewMeetingParticipant = typeof meetingParticipants.$inferInsert;
+export type CallSession = typeof callSessions.$inferSelect;
+export type NewCallSession = typeof callSessions.$inferInsert;

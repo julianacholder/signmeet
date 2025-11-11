@@ -1,17 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { Camera, User, Mail, Phone, Lock, Trash2 } from 'lucide-react';
+import { Camera, User, Mail, Lock, Trash2, Building2, Briefcase, Award } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Update EditingField to include all keys from ProfileData that can be edited
-type EditingField = 'username' | 'email' | 'phone' | null;
+type EditingField = 'fullName' | 'email' | 'rslProficiencyLevel' | null;
 
 type ProfileData = {
-  username: string;
+  fullName: string;
   email: string;
-  phone: string;
+  rslProficiencyLevel?: string; // For candidates
+  companyName?: string; // For company (read-only)
+  industry?: string; // For company (read-only)
+  role?: string; // For company (read-only)
   initials?: string;
-  fullName?: string;
 };
 
 type UserType = 'candidate' | 'company';
@@ -19,10 +27,17 @@ type UserType = 'candidate' | 'company';
 interface ProfileSettingsProps {
   initialData: ProfileData;
   userType: UserType;
-  onSave?: (data: ProfileData) => void;
-  onDelete?: () => void;
-  onDeactivate?: () => void;
+  onSave?: (data: ProfileData) => void | Promise<void>;
+  onDelete?: () => void | Promise<void>;
+  onDeactivate?: () => void | Promise<void>;
 }
+
+const RSL_PROFICIENCY_LEVELS = [
+  'Beginner',
+  'Intermediate',
+  'Advanced',
+  'Native/Fluent'
+] as const;
 
 export default function ProfileSettingsPage({
   initialData,
@@ -40,11 +55,10 @@ export default function ProfileSettingsPage({
   const handleEdit = (field: EditingField) => {
     if (field) {
       setEditingField(field);
-      setTempValue(profile[field]);
+      setTempValue(profile[field] || '');
     }
   };
 
-  // Fix: Use EditingField instead of keyof ProfileData
   const handleSave = (field: EditingField) => {
     if (field) {
       const updatedProfile = { ...profile, [field]: tempValue };
@@ -53,25 +67,25 @@ export default function ProfileSettingsPage({
     }
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (onSave) {
-      onSave(profile);
+      await onSave(profile);
     }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (onDelete) {
-      onDelete();
+      await onDelete();
     }
   };
 
-  const handleDeactivate = () => {
+  const handleDeactivate = async () => {
     if (onDeactivate) {
-      onDeactivate();
+      await onDeactivate();
     }
   };
 
-  // Fix: Change parameter type to EditingField (excluding null)
+  // Editable field component for text inputs
   const renderEditableField = (
     field: Exclude<EditingField, null>,
     label: string, 
@@ -80,6 +94,12 @@ export default function ProfileSettingsPage({
   ) => {
     const isEditing = editingField === field;
     const Icon = icon;
+    const value = profile[field];
+
+    // Don't render if the field doesn't exist for this user type
+    if (value === undefined && field === 'rslProficiencyLevel' && userType !== 'candidate') {
+      return null;
+    }
 
     return (
       <div className="flex items-center gap-4">
@@ -107,16 +127,96 @@ export default function ProfileSettingsPage({
             <>
               <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-indigo-100 rounded-xl text-gray-800">
                 <Icon className="w-4 h-4 text-gray-400" />
-                {profile[field]}
+                {value || 'Not set'}
               </div>
               <button
                 onClick={() => handleEdit(field)}
                 className="text-primary hover:text-primary-hover font-medium text-sm"
               >
-                {field === 'email' || field === 'phone' ? 'Change' : 'Edit'}
+                {field === 'email' ? 'Change' : 'Edit'}
               </button>
             </>
           )}
+        </div>
+      </div>
+    );
+  };
+
+  // Special component for RSL Proficiency with Select dropdown
+  const renderRSLProficiencyField = () => {
+    const isEditing = editingField === 'rslProficiencyLevel';
+    const value = profile.rslProficiencyLevel;
+
+    return (
+      <div className="flex items-center gap-4">
+        <div className="w-32">
+          <label className="text-sm font-medium text-gray-700">RSL Proficiency</label>
+        </div>
+        <div className="flex-1 flex items-center gap-3">
+          {isEditing ? (
+            <>
+              <Select
+                value={tempValue}
+                onValueChange={setTempValue}
+              >
+                <SelectTrigger className="flex-1 max-w-md">
+                  <SelectValue placeholder="Select proficiency level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RSL_PROFICIENCY_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {level}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                onClick={() => handleSave('rslProficiencyLevel')}
+                className="text-primary hover:text-primary-hover font-medium text-sm"
+              >
+                Save
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-indigo-100 rounded-xl text-gray-800">
+                <Award className="w-4 h-4 text-gray-400" />
+                {value || 'Not set'}
+              </div>
+              <button
+                onClick={() => handleEdit('rslProficiencyLevel')}
+                className="text-primary hover:text-primary-hover font-medium text-sm"
+              >
+                Edit
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Read-only field component (for company details)
+  const renderReadOnlyField = (
+    label: string, 
+    value: string | undefined, 
+    icon: React.ElementType
+  ) => {
+    if (!value) return null; // Don't render if no value
+
+    const Icon = icon;
+
+    return (
+      <div className="flex items-center gap-4">
+        <div className="w-32">
+          <label className="text-sm font-medium text-gray-700">{label}</label>
+        </div>
+        <div className="flex-1 flex items-center gap-3">
+          <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-gray-100 rounded-xl text-gray-800">
+            <Icon className="w-4 h-4 text-gray-400" />
+            {value}
+          </div>
+          <span className="text-xs text-gray-400 w-16">Read-only</span>
         </div>
       </div>
     );
@@ -138,7 +238,7 @@ export default function ProfileSettingsPage({
               <div className="relative">
                 <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center">
                   <p className='text-3xl font-semibold text-white'>
-                    {profile.initials || profile.username.substring(0, 2).toUpperCase()}
+                    {profile.initials || profile.fullName?.substring(0, 2).toUpperCase() || 'U'}
                   </p>
                 </div>
                 <button className="absolute bottom-0 right-0 w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center hover:bg-blue-700">
@@ -159,10 +259,37 @@ export default function ProfileSettingsPage({
 
         {/* Profile Information */}
         <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-6">
+            {userType === 'candidate' ? 'Personal Information' : 'Profile Information'}
+          </h2>
           <div className="space-y-6">
-            {renderEditableField('username', 'Username', User, 'Enter username')}
+            {/* Full Name - Editable for both */}
+            {renderEditableField('fullName', 'Full Name', User, 'Enter full name')}
+            
+            {/* Email - Editable for both */}
             {renderEditableField('email', 'Email', Mail, 'Enter email')}
-            {renderEditableField('phone', 'Phone', Phone, 'Enter phone number')}
+            
+            {/* Candidate-specific fields */}
+            {userType === 'candidate' && (
+              <>
+                {/* RSL Proficiency - Select Dropdown */}
+                {renderRSLProficiencyField()}
+              </>
+            )}
+
+            {/* Company-specific fields */}
+            {userType === 'company' && (
+              <>
+                {/* Company Name - Read-only */}
+                {renderReadOnlyField('Company Name', profile.companyName, Building2)}
+                
+                {/* Industry - Read-only */}
+                {renderReadOnlyField('Industry', profile.industry, Briefcase)}
+                
+                {/* Role - Read-only */}
+                {renderReadOnlyField('Your Role', profile.role, User)}
+              </>
+            )}
           </div>
         </div>
 
@@ -238,7 +365,7 @@ export default function ProfileSettingsPage({
             onClick={handleSaveChanges}
             className="px-6 py-2 bg-primary hover:bg-primary-hover cursor-pointer text-white rounded-lg font-medium"
           >
-            Save Change
+            Save Changes
           </button>
         </div>
       </div>

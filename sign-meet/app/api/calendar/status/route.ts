@@ -10,8 +10,9 @@ const calendarStatusCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (calendar connection status doesn't change often)
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient({ cookies});
+  const supabase = createRouteHandlerClient({ 
+  cookies: () => cookies() 
+});
   
   const { data: { user } } = await supabase.auth.getUser();
   
