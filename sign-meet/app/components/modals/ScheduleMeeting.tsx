@@ -23,20 +23,32 @@ import {
 import { Calendar, X, Plus, Mail, Copy, Video, Loader2, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
+// ✅ UPDATED: Added editMode and interviewToEdit props
 interface ScheduleMeetingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  prefilledDate?: Date | null; // NEW
+  prefilledDate?: Date | null;
+  editMode?: boolean;
+  interviewToEdit?: {
+    id: string;
+    title: string;
+    description?: string;
+    startTime: Date | string;
+    endTime: Date | string;
+    participants: string[];
+  };
 }
 
 export default function ScheduleMeetingModal({ 
   isOpen, 
   onClose,
   onSuccess,
-  prefilledDate // NEW
+  prefilledDate,
+  editMode = false, // ✅ NEW
+  interviewToEdit // ✅ NEW
 }: ScheduleMeetingModalProps) {
   const [meetingData, setMeetingData] = useState({
     title: '',
@@ -57,7 +69,7 @@ export default function ScheduleMeetingModal({
   const [emailInput, setEmailInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // NEW: Prefill date when modal opens
+  // Prefill date when modal opens
   useEffect(() => {
     if (prefilledDate && isOpen) {
       setMeetingData(prev => ({
@@ -67,7 +79,37 @@ export default function ScheduleMeetingModal({
     }
   }, [prefilledDate, isOpen]);
 
-  // NEW: Reset form when modal closes
+  // ✅ NEW: Prefill form when editing an interview
+  useEffect(() => {
+    if (interviewToEdit && isOpen && editMode) {
+      const startDate = typeof interviewToEdit.startTime === 'string' 
+        ? parseISO(interviewToEdit.startTime)
+        : interviewToEdit.startTime;
+      
+      const endDate = typeof interviewToEdit.endTime === 'string'
+        ? parseISO(interviewToEdit.endTime)
+        : interviewToEdit.endTime;
+
+      setMeetingData({
+        title: interviewToEdit.title,
+        description: interviewToEdit.description || '',
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        startTime: format(startDate, 'HH:mm'),
+        endTime: format(endDate, 'HH:mm'),
+        timezone: 'CAT',
+        meetingType: 'video',
+        sendInviteEmail: true,
+        enableRSLTranslation: true,
+        passcode: '',
+        waitingRoom: false,
+        recordMeeting: false
+      });
+      
+      setParticipants(interviewToEdit.participants || []);
+    }
+  }, [interviewToEdit, isOpen, editMode]);
+
+  // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setMeetingData({
@@ -169,14 +211,25 @@ export default function ScheduleMeetingModal({
         return;
       }
 
-      // Show loading toast
-      const loadingToast = toast.loading('Creating meeting...', {
-        description: 'Setting up your calendar event'
-      });
+      // ✅ NEW: Different API calls for create vs update
+      const method = editMode ? 'PUT' : 'POST';
+      const url = editMode 
+        ? `/api/interviews/${interviewToEdit!.id}`
+        : '/api/calendar/events';
 
-      // Create event via API
-      const response = await fetch('/api/calendar/events', {
-        method: 'POST',
+      // Show loading toast
+      const loadingToast = toast.loading(
+        editMode ? 'Updating meeting...' : 'Creating meeting...', 
+        {
+          description: editMode 
+            ? 'Updating your calendar event' 
+            : 'Setting up your calendar event'
+        }
+      );
+
+      // Create/Update event via API
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -204,7 +257,7 @@ export default function ScheduleMeetingModal({
             }
           });
         } else {
-          toast.error('Failed to create meeting', {
+          toast.error(editMode ? 'Failed to update meeting' : 'Failed to create meeting', {
             description: data.error || 'An error occurred'
           });
         }
@@ -212,47 +265,55 @@ export default function ScheduleMeetingModal({
         return;
       }
 
-      // Success! Show detailed toast
-      toast.success('Meeting scheduled successfully! 🎉', {
-        description: (
-          <div className="mt-2 space-y-2">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="font-semibold">Meeting ID:</span>
-              <code className="bg-gray-100 px-1.5 py-0.5 rounded">{data.interview.meetingId}</code>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyToClipboard(data.interview.meetingId, 'Meeting ID');
-                }}
-                className="hover:bg-gray-100 p-0.5 rounded"
-              >
-                <Copy className="w-3 h-3" />
-              </button>
+      // ✅ UPDATED: Different success messages for create vs update
+      if (editMode) {
+        toast.success('Meeting updated successfully! 🎉', {
+          description: 'All participants have been notified of the changes',
+          duration: 5000,
+        });
+      } else {
+        // Success! Show detailed toast
+        toast.success('Meeting scheduled successfully! 🎉', {
+          description: (
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold">Meeting ID:</span>
+                <code className="bg-gray-100 px-1.5 py-0.5 rounded">{data.interview.meetingId}</code>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyToClipboard(data.interview.meetingId, 'Meeting ID');
+                  }}
+                  className="hover:bg-gray-100 p-0.5 rounded"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold">Passcode:</span>
+                <code className="bg-gray-100 px-1.5 py-0.5 rounded">{data.interview.passcode}</code>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyToClipboard(data.interview.passcode, 'Passcode');
+                  }}
+                  className="hover:bg-gray-100 p-0.5 rounded"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                📧 Calendar invites sent to {participants.length} participant{participants.length > 1 ? 's' : ''}
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="font-semibold">Passcode:</span>
-              <code className="bg-gray-100 px-1.5 py-0.5 rounded">{data.interview.passcode}</code>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyToClipboard(data.interview.passcode, 'Passcode');
-                }}
-                className="hover:bg-gray-100 p-0.5 rounded"
-              >
-                <Copy className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="text-xs text-muted-foreground mt-2">
-              📧 Calendar invites sent to {participants.length} participant{participants.length > 1 ? 's' : ''}
-            </div>
-          </div>
-        ),
-        duration: 8000,
-        action: {
-          label: 'Copy Link',
-          onClick: () => copyToClipboard(data.meetingLink, 'Meeting link')
-        }
-      });
+          ),
+          duration: 8000,
+          action: {
+            label: 'Copy Link',
+            onClick: () => copyToClipboard(data.meetingLink, 'Meeting link')
+          }
+        });
+      }
       
       // Call success callback
       if (onSuccess) {
@@ -280,7 +341,8 @@ export default function ScheduleMeetingModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Schedule Meeting
+            {/*  UPDATED: Different title for edit mode */}
+            {editMode ? 'Reschedule Meeting' : 'Schedule Meeting'}
           </DialogTitle>
         </DialogHeader>
 
@@ -496,12 +558,12 @@ export default function ScheduleMeetingModal({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Scheduling...
+                  {editMode ? 'Updating...' : 'Scheduling...'}
                 </>
               ) : (
                 <>
                   <Mail className="w-4 h-4 mr-2" />
-                  Schedule & Send Invites
+                  {editMode ? 'Update Meeting' : 'Schedule & Send Invites'}
                 </>
               )}
             </Button>

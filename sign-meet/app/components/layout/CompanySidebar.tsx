@@ -4,9 +4,11 @@ import { Calendar, User, Clock, Home, CalendarDays, Ban, ChartNoAxesCombined, Us
 import Sidebar from './Sidebar';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useStats } from '@/app/hooks/useStats';
 
 export default function CompanySidebar() {
   const router = useRouter();
+  const { stats, isLoading } = useStats();
 
   const navItems = [
     {
@@ -19,7 +21,7 @@ export default function CompanySidebar() {
       href: '/company/schedule',
       icon: <Calendar className="w-5 h-5" strokeWidth={2.5} />,
     },
-     {
+    {
       label: 'Team',
       href: '/company/team',
       icon: <Users className="w-5 h-5" strokeWidth={2.5} />,
@@ -36,22 +38,22 @@ export default function CompanySidebar() {
     },
   ];
 
-   const stats = [
+  const statsDisplay = [
     {
       label: 'No. of meetings',
-      value: '36',
+      value: isLoading ? '...' : stats.totalMeetings.toString(),
       subtext: 'This Month',
       icon: <Clock className="w-4 h-4 text-gray-400" />,
     },
     {
       label: 'Rescheduled meetings',
-      value: '15',
+      value: isLoading ? '...' : stats.rescheduledMeetings.toString(),
       subtext: 'This Month',
       icon: <CalendarDays className="w-4 h-4 text-gray-400" />,
     },
     {
       label: 'Cancelled meetings',
-      value: '21',
+      value: isLoading ? '...' : stats.cancelledMeetings.toString(),
       subtext: 'This Month',
       icon: <Ban className="w-4.5 h-4.5 text-gray-400" />,
     },
@@ -69,7 +71,7 @@ export default function CompanySidebar() {
   return (
     <Sidebar 
       navItems={navItems} 
-      stats={stats} 
+      stats={statsDisplay} 
       settingsHref="/company/settings"  
       onLogout={handleLogout} 
     />

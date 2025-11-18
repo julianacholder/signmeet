@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon, Clock, Video, Copy, Plus, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ScheduleMeetingModal from '@components/modals/ScheduleMeeting'; 
 import InteractiveCalendar from '@components/schedule/InteractiveCalendar';
+import MoreOptionsMenu from '@components/schedule/MoreOptionsMenu';
+import CancelMeetingDialog from '@components/schedule/CancelMeetingDialog';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -50,6 +52,14 @@ export default function InterviewSchedule({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const interviewsPerPage = 4;
+
+  // ✅ NEW: Cancel meeting state
+  const [interviewToCancel, setInterviewToCancel] = useState<Interview | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // ✅ NEW: Reschedule meeting state
+  const [interviewToReschedule, setInterviewToReschedule] = useState<Interview | null>(null);
 
   // Calculate pagination
   const totalPages = Math.ceil(interviews.length / interviewsPerPage);
@@ -116,6 +126,53 @@ export default function InterviewSchedule({
     setIsScheduleModalOpen(true);
   };
 
+  // ✅ NEW: Handle reschedule
+  const handleReschedule = (interview: Interview) => {
+    setInterviewToReschedule(interview);
+    setIsScheduleModalOpen(true);
+  };
+
+  // ✅ NEW: Handle cancel - show confirmation dialog
+  const handleCancelClick = (interview: Interview) => {
+    setInterviewToCancel(interview);
+    setShowCancelDialog(true);
+  };
+
+  // ✅ NEW: Confirm cancellation - actually delete the interview
+  const handleConfirmCancel = async () => {
+    if (!interviewToCancel) return;
+
+    setIsCancelling(true);
+
+    try {
+      const response = await fetch(`/api/interviews/${interviewToCancel.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to cancel interview');
+      }
+
+      toast.success('Meeting cancelled', {
+        description: `"${interviewToCancel.title}" has been cancelled successfully`
+      });
+
+      // Close dialog and refresh
+      setShowCancelDialog(false);
+      setInterviewToCancel(null);
+      onRefresh?.();
+
+    } catch (error: any) {
+      console.error('Error cancelling interview:', error);
+      toast.error('Failed to cancel meeting', {
+        description: error.message || 'Please try again'
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const formatDateTime = (interview: Interview) => {
     const startTime = typeof interview.startTime === 'string' 
       ? parseISO(interview.startTime) 
@@ -154,7 +211,6 @@ export default function InterviewSchedule({
               <h1 className="text-xl font-semibold">
                 {userRole === 'candidate' ? 'Interview Scheduled' : 'Scheduled Interviews'}
               </h1>
-              
             </div>
             <Button 
               className="bg-primary hover:bg-hoverPrimary cursor-pointer"
@@ -272,7 +328,8 @@ export default function InterviewSchedule({
                               {interview.type}
                             </p>
                             
-                            <div className="flex gap-2">
+                            {/* ✅ UPDATED: Added MoreOptionsMenu */}
+                            <div className="flex gap-2 items-center">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -283,14 +340,17 @@ export default function InterviewSchedule({
                               <Button 
                                 size="sm"
                                 className="bg-primary hover:bg-primary/90"
-                                
                                 onClick={() => {
-  window.location.href = `/meeting/${interview.meetingId}`;
-}}
+                                  window.location.href = `/meeting/${interview.meetingId}`;
+                                }}
                               >
                                 <Video className="w-4 h-4 mr-2" />
                                 Join
                               </Button>
+                              <MoreOptionsMenu
+                                onReschedule={() => handleReschedule(interview)}
+                                onCancel={() => handleCancelClick(interview)}
+                              />
                             </div>
                           </div>
                         </CardContent>
@@ -312,7 +372,6 @@ export default function InterviewSchedule({
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {/* Previous Button */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -324,7 +383,6 @@ export default function InterviewSchedule({
                       Previous
                     </Button>
 
-                    {/* Page Numbers */}
                     <div className="flex gap-1">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                         <Button
@@ -339,7 +397,6 @@ export default function InterviewSchedule({
                       ))}
                     </div>
 
-                    {/* Next Button */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -408,7 +465,6 @@ export default function InterviewSchedule({
             </CardContent>
           </Card>
 
-          {/* Interactive Calendar Component */}
           <InteractiveCalendar 
             interviews={interviews}
             onDateSelect={handleDateSelect}
@@ -499,8 +555,8 @@ export default function InterviewSchedule({
                 <Button
                   className="flex-1"
                   onClick={() => {
-  window.location.href = `/meeting/${selectedInterview.meetingId}`;
-}}
+                    window.location.href = `/meeting/${selectedInterview.meetingId}`;
+                  }}
                 >
                   <Video className="w-4 h-4 mr-2" />
                   Join Meeting
@@ -530,19 +586,43 @@ Join Link: ${selectedInterview.meetingLink}`;
         </div>
       )}
 
-      {/* Schedule Meeting Modal */}
+      {/* ✅ UPDATED: Schedule Meeting Modal with reschedule support */}
       <ScheduleMeetingModal
         isOpen={isScheduleModalOpen}
         onClose={() => {
           setIsScheduleModalOpen(false);
           setSelectedDate(null);
+          setInterviewToReschedule(null);
         }}
         onSuccess={() => {
           setIsScheduleModalOpen(false);
           setSelectedDate(null);
+          setInterviewToReschedule(null);
           onRefresh?.();
         }}
         prefilledDate={selectedDate}
+        // Note: Add these props to your ScheduleMeetingModal when implementing reschedule
+        editMode={!!interviewToReschedule}
+        interviewToEdit={interviewToReschedule ? {
+          id: interviewToReschedule.id,
+          title: interviewToReschedule.title,
+          description: interviewToReschedule.description,
+          startTime: interviewToReschedule.startTime,
+          endTime: interviewToReschedule.endTime,
+          participants: interviewToReschedule.participants?.map(p => p.email || p.guestEmail).filter(Boolean) || []
+        } : undefined}
+      />
+
+      {/* ✅ NEW: Cancel Meeting Confirmation Dialog */}
+      <CancelMeetingDialog
+        isOpen={showCancelDialog}
+        onClose={() => {
+          setShowCancelDialog(false);
+          setInterviewToCancel(null);
+        }}
+        onConfirm={handleConfirmCancel}
+        meetingTitle={interviewToCancel?.title || ''}
+        isLoading={isCancelling}
       />
     </div>
   );

@@ -34,11 +34,11 @@ export default function LanguageDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="flex items-center cursor-pointer p-2 text-black rounded-lg hover:bg-primary/10 transition-colors">
-          <span className="font-medium">{language}</span>
-          <ChevronDown className="w-4 h-4 ml-1" />
-        </div>
-      </DropdownMenuTrigger>
+  <div className="flex items-center cursor-pointer p-2 text-black dark:text-white rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors">
+    <span className="font-medium">{language}</span>
+    <ChevronDown className="w-4 h-4 ml-1" />
+  </div>
+</DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-40">
         {languages.map((lang) => (

@@ -1,10 +1,13 @@
 'use client';
 
-import { Video, Calendar, User, Clock, Home, Ban, CalendarDays, Search, SearchCheck } from 'lucide-react';
+import { Video, Calendar, User, Clock, Home, Ban, CalendarDays, SearchCheck } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { signOut } from '@/lib/client-auth';
+import { useStats } from '@/app/hooks/useStats';
 
 export default function CandidateSidebar() {
+  const { stats, isLoading } = useStats();
+
   const navItems = [
     {
       label: 'Dashboard',
@@ -16,7 +19,7 @@ export default function CandidateSidebar() {
       href: '/candidate/practice',
       icon: <Video className="w-4 h-4" />,
     },
-     {
+    {
       label: 'Find Jobs',
       href: '/candidate/jobs',
       icon: <SearchCheck className="w-4 h-4" />,
@@ -33,33 +36,30 @@ export default function CandidateSidebar() {
     },
   ];
 
-  const stats = [
+  const statsDisplay = [
     {
       label: 'No. of meetings',
-      value: '36',
+      value: isLoading ? '...' : stats.totalMeetings.toString(),
       subtext: 'This Month',
       icon: <Clock className="w-4 h-4 text-gray-400" />,
     },
     {
       label: 'Rescheduled meetings',
-      value: '15',
+      value: isLoading ? '...' : stats.rescheduledMeetings.toString(),
       subtext: 'This Month',
       icon: <CalendarDays className="w-4 h-4 text-gray-400" />,
     },
     {
       label: 'Cancelled meetings',
-      value: '21',
+      value: isLoading ? '...' : stats.cancelledMeetings.toString(),
       subtext: 'This Month',
       icon: <Ban className="w-4.5 h-4.5 text-gray-400" />,
     },
   ];
 
   const handleLogout = async () => {
-    console.log('Logout button clicked!'); // Add this
     try {
-      console.log('Calling signOut...'); // Add this
       await signOut();
-      console.log('SignOut completed'); // Add this
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -68,7 +68,7 @@ export default function CandidateSidebar() {
   return (
     <Sidebar 
       navItems={navItems} 
-      stats={stats} 
+      stats={statsDisplay} 
       settingsHref="/candidate/settings"  
       onLogout={handleLogout} 
     />

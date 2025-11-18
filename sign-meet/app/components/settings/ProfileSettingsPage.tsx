@@ -15,10 +15,10 @@ type EditingField = 'fullName' | 'email' | 'rslProficiencyLevel' | null;
 type ProfileData = {
   fullName: string;
   email: string;
-  rslProficiencyLevel?: string; // For candidates
-  companyName?: string; // For company (read-only)
-  industry?: string; // For company (read-only)
-  role?: string; // For company (read-only)
+  rslProficiencyLevel?: string;
+  companyName?: string;
+  industry?: string;
+  role?: string;
   initials?: string;
 };
 
@@ -96,7 +96,6 @@ export default function ProfileSettingsPage({
     const Icon = icon;
     const value = profile[field];
 
-    // Don't render if the field doesn't exist for this user type
     if (value === undefined && field === 'rslProficiencyLevel' && userType !== 'candidate') {
       return null;
     }
@@ -104,7 +103,7 @@ export default function ProfileSettingsPage({
     return (
       <div className="flex items-center gap-4">
         <div className="w-32">
-          <label className="text-sm font-medium text-gray-700">{label}</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
         </div>
         <div className="flex-1 flex items-center gap-3">
           {isEditing ? (
@@ -114,7 +113,7 @@ export default function ProfileSettingsPage({
                 value={tempValue}
                 onChange={(e) => setTempValue(e.target.value)}
                 placeholder={placeholder}
-                className="flex-1 max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="flex-1 max-w-md px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
               <button
                 onClick={() => handleSave(field)}
@@ -125,8 +124,8 @@ export default function ProfileSettingsPage({
             </>
           ) : (
             <>
-              <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-indigo-100 rounded-xl text-gray-800">
-                <Icon className="w-4 h-4 text-gray-400" />
+              <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-gray-800 dark:text-gray-200">
+                <Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 {value || 'Not set'}
               </div>
               <button
@@ -150,7 +149,7 @@ export default function ProfileSettingsPage({
     return (
       <div className="flex items-center gap-4">
         <div className="w-32">
-          <label className="text-sm font-medium text-gray-700">RSL Proficiency</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">RSL Proficiency</label>
         </div>
         <div className="flex-1 flex items-center gap-3">
           {isEditing ? (
@@ -179,8 +178,8 @@ export default function ProfileSettingsPage({
             </>
           ) : (
             <>
-              <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-indigo-100 rounded-xl text-gray-800">
-                <Award className="w-4 h-4 text-gray-400" />
+              <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-gray-800 dark:text-gray-200">
+                <Award className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 {value || 'Not set'}
               </div>
               <button
@@ -202,21 +201,21 @@ export default function ProfileSettingsPage({
     value: string | undefined, 
     icon: React.ElementType
   ) => {
-    if (!value) return null; // Don't render if no value
+    if (!value) return null;
 
     const Icon = icon;
 
     return (
       <div className="flex items-center gap-4">
         <div className="w-32">
-          <label className="text-sm font-medium text-gray-700">{label}</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
         </div>
         <div className="flex-1 flex items-center gap-3">
-          <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-gray-100 rounded-xl text-gray-800">
-            <Icon className="w-4 h-4 text-gray-400" />
+          <div className="flex-1 max-w-md flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-800 dark:text-gray-200">
+            <Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             {value}
           </div>
-          <span className="text-xs text-gray-400 w-16">Read-only</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500 w-16">Read-only</span>
         </div>
       </div>
     );
@@ -224,15 +223,15 @@ export default function ProfileSettingsPage({
 
   return (
     <div className="max-w-full mx-12 mt-5 p-6 md:p-8">
-      <h1 className="text-2xl font-semibold mb-8 text-gray-800">Profile Settings</h1>
+      <h1 className="text-2xl font-semibold mb-8 text-gray-800 dark:text-gray-100">Profile Settings</h1>
 
       <div className="space-y-6">
         {/* Profile Photo Section */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900 p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-sm font-medium text-gray-800 mb-1">Your Photo</h3>
-              <p className="text-sm text-gray-500">This will be displayed on your profile</p>
+              <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Your Photo</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">This will be displayed on your profile</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -241,7 +240,7 @@ export default function ProfileSettingsPage({
                     {profile.initials || profile.fullName?.substring(0, 2).toUpperCase() || 'U'}
                   </p>
                 </div>
-                <button className="absolute bottom-0 right-0 w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center hover:bg-blue-700">
+                <button className="absolute bottom-0 right-0 w-6 h-6 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center hover:bg-blue-700">
                   <Camera className="w-4 h-4 text-primary" />
                 </button>
               </div>
@@ -249,7 +248,7 @@ export default function ProfileSettingsPage({
                 <button className="text-primary hover:text-primary-hover font-medium text-sm">
                   Change
                 </button>
-                <button className="text-red-600 hover:text-red-700 font-medium text-sm">
+                <button className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium text-sm">
                   Delete
                 </button>
               </div>
@@ -258,35 +257,20 @@ export default function ProfileSettingsPage({
         </div>
 
         {/* Profile Information */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900 p-6">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">
             {userType === 'candidate' ? 'Personal Information' : 'Profile Information'}
           </h2>
           <div className="space-y-6">
-            {/* Full Name - Editable for both */}
             {renderEditableField('fullName', 'Full Name', User, 'Enter full name')}
-            
-            {/* Email - Editable for both */}
             {renderEditableField('email', 'Email', Mail, 'Enter email')}
             
-            {/* Candidate-specific fields */}
-            {userType === 'candidate' && (
-              <>
-                {/* RSL Proficiency - Select Dropdown */}
-                {renderRSLProficiencyField()}
-              </>
-            )}
+            {userType === 'candidate' && renderRSLProficiencyField()}
 
-            {/* Company-specific fields */}
             {userType === 'company' && (
               <>
-                {/* Company Name - Read-only */}
                 {renderReadOnlyField('Company Name', profile.companyName, Building2)}
-                
-                {/* Industry - Read-only */}
                 {renderReadOnlyField('Industry', profile.industry, Briefcase)}
-                
-                {/* Role - Read-only */}
                 {renderReadOnlyField('Your Role', profile.role, User)}
               </>
             )}
@@ -294,15 +278,14 @@ export default function ProfileSettingsPage({
         </div>
 
         {/* Account Security */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-6">Account security</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900 p-6">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">Account security</h2>
           
           <div className="space-y-6">
-            {/* Change Password */}
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium text-gray-800 mb-1">Change password</h3>
-                <p className="text-sm text-gray-500">Change password requires confirmation</p>
+                <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Change password</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Change password requires confirmation</p>
               </div>
               <button className="text-primary hover:text-primary-hover font-medium text-sm flex items-center gap-2">
                 <Lock className="w-4 h-4" />
@@ -310,16 +293,15 @@ export default function ProfileSettingsPage({
               </button>
             </div>
 
-            {/* Login Alerts */}
-            <div className="flex items-center justify-between pt-4 border-t">
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
               <div>
-                <h3 className="text-sm font-medium text-gray-800 mb-1">Login Alerts</h3>
+                <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Login Alerts</h3>
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setLoginAlertsEnabled(!loginAlertsEnabled)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    loginAlertsEnabled ? 'bg-primary' : 'bg-gray-200'
+                    loginAlertsEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'
                   }`}
                 >
                   <span
@@ -328,7 +310,7 @@ export default function ProfileSettingsPage({
                     }`}
                   />
                 </button>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   {loginAlertsEnabled ? 'Enabled' : 'Disable Login Alerts'}
                 </span>
               </div>
@@ -337,18 +319,18 @@ export default function ProfileSettingsPage({
         </div>
 
         {/* Account Management */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-6">Account Management</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900 p-6">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6">Account Management</h2>
           <div className="flex gap-3">
             <button 
               onClick={handleDeactivate}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+              className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
             >
               Deactivate
             </button>
             <button 
               onClick={handleDeleteAccount}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
               Delete account
@@ -357,8 +339,8 @@ export default function ProfileSettingsPage({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-6 border-t">
-          <button className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+        <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <button className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium">
             Cancel
           </button>
           <button 

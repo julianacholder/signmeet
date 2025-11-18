@@ -3,7 +3,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { interviews, meetingParticipants } from '@/lib/db/schema';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, and } from 'drizzle-orm';
 
 // In-memory cache
 // Key: userId, Value: { data, timestamp }
@@ -11,9 +11,9 @@ const interviewsCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (shorter than jobs since interviews change more often)
 
 export async function GET() {
-const supabase = createRouteHandlerClient({ 
-  cookies: () => cookies() 
-});
+  const supabase = createRouteHandlerClient({ 
+    cookies: () => cookies() 
+  });
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -45,9 +45,10 @@ const supabase = createRouteHandlerClient({
 
     console.log('👤 User profile:', profile);
 
-    // Fetch interviews where user is either:
+    // ✅ UPDATED: Fetch interviews where user is either:
     // 1. The creator (candidateId or interviewerId)
     // 2. A participant
+    // AND status is 'scheduled' (not cancelled)
     const userInterviews = await db
       .select({
         id: interviews.id,
@@ -66,10 +67,13 @@ const supabase = createRouteHandlerClient({
       .from(interviews)
       .leftJoin(meetingParticipants, eq(meetingParticipants.interviewId, interviews.id))
       .where(
-        or(
-          eq(interviews.candidateId, user.id),
-          eq(interviews.interviewerId, user.id),
-          eq(meetingParticipants.userId, user.id)
+        and(
+          or(
+            eq(interviews.candidateId, user.id),
+            eq(interviews.interviewerId, user.id),
+            eq(meetingParticipants.userId, user.id)
+          ),
+          eq(interviews.status, 'scheduled') // ✅ Only show scheduled interviews
         )
       )
       .groupBy(interviews.id);
@@ -214,7 +218,7 @@ export async function POST(request: Request) {
   
   if (action === 'clearCache' && userId) {
     interviewsCache.delete(userId);
-    console.log('🗑️ Cleared cache for user:', userId);
+    console.log(' Cleared cache for user:', userId);
     return NextResponse.json({ success: true });
   }
   
