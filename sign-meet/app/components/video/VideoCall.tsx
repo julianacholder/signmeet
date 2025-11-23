@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Link as LinkIcon, MessageSquare, User, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Link as LinkIcon, MessageSquare, ChevronRight, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMediaDevices } from '@/app/hooks/useMediaDevices';
 import { usePeerConnection } from '@/app/hooks/usePeerConnection';
@@ -11,6 +11,10 @@ import VideoControls from './VideoControls';
 import ParticipantsList from './ParticipantsList';
 import ChatPanel from './ChatPanel';
 import ModelMetrics from './ModelMetrics';
+import SignDetector from '@/app/components/sign-language/SignDetector';
+import LiveTranscription from '@/app/components/video/LiveTranscription';
+import { useVoiceTranscription } from '@/app/hooks/useVoiceTranscription';
+import { useAuth } from '@/app/context/AuthContext';
 
 interface VideoCallProps {
   meetingId: string;
@@ -29,6 +33,13 @@ interface ChatMessage {
   isLocal?: boolean;
 }
 
+interface CurrentTranscription {
+  text: string;
+  speaker: string;
+  speakerRole: string;
+  isLocal: boolean;
+}
+
 export default function VideoCall({
   meetingId,
   userId,
@@ -37,16 +48,71 @@ export default function VideoCall({
   meetingTitle
 }: VideoCallProps) {
   const router = useRouter();
+  const { profile } = useAuth();
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const calledPeersRef = useRef<Set<string>>(new Set()); // ✅ Track who we've called
-  const initializingRef = useRef(false); // ✅ Prevent double initialization
+  const calledPeersRef = useRef<Set<string>>(new Set());
+  const initializingRef = useRef(false);
 
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Helper function for consistent female voice
+const speakWithFemaleVoice = (text: string) => {
+  if (!('speechSynthesis' in window)) return;
+  
+  window.speechSynthesis.cancel();
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  
+  // Wait for voices to load
+  const setVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const femaleVoice = voices.find(voice => 
+      voice.lang.startsWith('en') && (
+        voice.name.toLowerCase().includes('female') ||
+        voice.name.toLowerCase().includes('samantha') ||
+        voice.name.toLowerCase().includes('victoria') ||
+        voice.name.toLowerCase().includes('zira')
+      )
+    ) || voices.find(voice => voice.lang.startsWith('en'));
+    
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+      console.log('🔊 Using voice on remote device:', femaleVoice.name);
+    }
+    
+    window.speechSynthesis.speak(utterance);
+  };
+  
+  // Voices might not be loaded immediately
+  if (window.speechSynthesis.getVoices().length > 0) {
+    setVoice();
+  } else {
+    window.speechSynthesis.onvoiceschanged = setVoice;
+  }
+};
+
+  // Single current transcription state
+  const [currentTranscription, setCurrentTranscription] = useState<CurrentTranscription>({
+    text: '',
+    speaker: '',
+    speakerRole: '',
+    isLocal: false
+  });
+
+  const [signConfidence, setSignConfidence] = useState<number>(0);
+  const [remoteTranscriptForCandidate, setRemoteTranscriptForCandidate] = useState<string>(''); 
+
+  // Determine user type
+  const isCandidate = profile?.user_type === 'deaf' || userRole === 'candidate';
+  const isCompanyOrGuest = profile?.user_type === 'company' || userRole === 'company' || userRole === 'interviewer' || userRole === 'guest' || !userId;
 
   const {
     stream: localStream,
@@ -58,6 +124,44 @@ export default function VideoCall({
     toggleVideo
   } = useMediaDevices();
 
+  // Handle received transcriptions from remote peer
+ const handleTranscriptionReceived = useCallback((message: any) => {
+  console.log('📨 RAW MESSAGE RECEIVED:', JSON.stringify(message, null, 2));
+  
+  const shouldSpeak = message.shouldSpeak === true || message.shouldSpeak === 'true';
+  
+  console.log('📨 Received transcription:', message.text, 'shouldSpeak:', shouldSpeak, '(raw:', message.shouldSpeak, ')');
+  console.log('🔍 Current user type check - isCompanyOrGuest:', isCompanyOrGuest, 'isCandidate:', isCandidate);
+  
+  setCurrentTranscription({
+    text: message.text,
+    speaker: message.sender,
+    speakerRole: message.senderRole,
+    isLocal: false
+  });
+
+  // ✅ If candidate, feed to SignDetector
+  if (isCandidate) {
+    console.log('📝 Feeding to SignDetector (candidate mode)');
+    setRemoteTranscriptForCandidate(message.text);
+  }
+
+  // ✅ If this is from a candidate and should be spoken, speak it
+  if (shouldSpeak) {
+    console.log('🔊 shouldSpeak is TRUE, checking if we should speak...');
+    console.log('🔊 isCompanyOrGuest:', isCompanyOrGuest);
+    
+    if (isCompanyOrGuest && 'speechSynthesis' in window) {
+      console.log('✅ SPEAKING on remote device:', message.text);
+      speakWithFemaleVoice(message.text);
+    } else {
+      console.log('❌ NOT speaking - isCompanyOrGuest:', isCompanyOrGuest, 'speechSynthesis available:', 'speechSynthesis' in window);
+    }
+  } else {
+    console.log('⏭️ Skipping speech - shouldSpeak is false');
+  }
+}, [isCandidate, isCompanyOrGuest]);
+
   const {
     peer,
     myPeerId,
@@ -66,8 +170,9 @@ export default function VideoCall({
     initializePeer,
     callPeer,
     answerCall,
-    disconnectPeer
-  } = usePeerConnection();
+    disconnectPeer,
+    sendTranscription
+  } = usePeerConnection(handleTranscriptionReceived);
 
   const {
     sessionId,
@@ -76,9 +181,133 @@ export default function VideoCall({
     endSession
   } = useCallSession();
 
+  const [fullProfile, setFullProfile] = useState<any>(null);
+  const [videoReady, setVideoReady] = useState(false);
+
+  // ✅ Voice transcription ONLY for company/guest users
+  const handlePhraseComplete = useCallback((text: string) => {
+    console.log('🎤 Voice phrase complete:', text);
+    
+    // Update local display
+    setCurrentTranscription({
+      text,
+      speaker: userName,
+      speakerRole: userRole,
+      isLocal: true
+    });
+
+    // Send to remote peer WITHOUT shouldSpeak (voice is already transmitted via audio stream)
+    sendTranscription(text, {
+      sender: userName,
+      senderRole: userRole
+      // No shouldSpeak here - voice is already transmitted via audio stream
+    });
+  }, [userName, userRole, sendTranscription]);
+
+  const voiceTranscription = isCompanyOrGuest 
+    ? useVoiceTranscription(handlePhraseComplete)
+    : {
+        isListening: false,
+        currentTranscript: '',
+        isSupported: false,
+        startListening: () => {},
+        stopListening: () => {}
+      };
+
+  const {
+    isListening,
+    currentTranscript: liveVoiceTranscript,
+    isSupported: voiceSupported,
+    startListening,
+    stopListening
+  } = voiceTranscription;
+
+  // Show live voice transcript while speaking (before phrase completes)
+  useEffect(() => {
+    if (isCompanyOrGuest && liveVoiceTranscript && liveVoiceTranscript.length > 0) {
+      setCurrentTranscription({
+        text: liveVoiceTranscript,
+        speaker: userName,
+        speakerRole: userRole,
+        isLocal: true
+      });
+    }
+  }, [liveVoiceTranscript, isCompanyOrGuest, userName, userRole]);
+
+  // Start/stop voice recognition based on audio state
+  useEffect(() => {
+    if (isCompanyOrGuest && voiceSupported) {
+      if (audioEnabled && !isListening) {
+        console.log('🎤 Starting voice recognition');
+        startListening();
+      } else if (!audioEnabled && isListening) {
+        console.log('🎤 Stopping voice recognition');
+        stopListening();
+      }
+    }
+  }, [audioEnabled, isCompanyOrGuest, voiceSupported, isListening, startListening, stopListening]);
+
+const handleSignDetected = useCallback((sign: string, text: string, confidence: number) => {
+  console.log('👋 Sign detected:', text);
+  
+  setSignConfidence(confidence);
+  
+  // Update local display immediately
+  setCurrentTranscription({
+    text,
+    speaker: userName,
+    speakerRole: userRole,
+    isLocal: true
+  });
+
+  // ✅ SPEAK THE TEXT ALOUD locally with FEMALE VOICE
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    // Wait for voices to load and select female voice
+    const setVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const femaleVoice = voices.find(voice => 
+        voice.lang.startsWith('en') && (
+          voice.name.toLowerCase().includes('female') ||
+          voice.name.toLowerCase().includes('samantha') ||
+          voice.name.toLowerCase().includes('victoria') ||
+          voice.name.toLowerCase().includes('zira')
+        )
+      ) || voices.find(voice => voice.lang.startsWith('en'));
+      
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+        console.log('🔊 Using voice on signer device:', femaleVoice.name);
+      }
+      
+      window.speechSynthesis.speak(utterance);
+    };
+    
+    // Voices might not be loaded immediately
+    if (window.speechSynthesis.getVoices().length > 0) {
+      setVoice();
+    } else {
+      window.speechSynthesis.onvoiceschanged = setVoice;
+    }
+  }
+
+  // ✅ Send to remote IMMEDIATELY with forced boolean
+  sendTranscription(text, {
+    sender: userName,
+    senderRole: userRole,
+    shouldSpeak: true // 👈 Remote will also speak this
+  });
+
+}, [userName, userRole, sendTranscription]);
+
   // Initialize video call
   useEffect(() => {
-    // ✅ Prevent double initialization (React Strict Mode causes double mount)
     if (initializingRef.current) {
       console.log('⚠️ Already initializing, skipping...');
       return;
@@ -88,6 +317,7 @@ export default function VideoCall({
 
     const initialize = async () => {
       try {
+        console.log('🚀 Initializing video call...');
         await startMedia(true, true);
         const peerId = await initializePeer(userId);
         
@@ -105,6 +335,7 @@ export default function VideoCall({
         });
 
         setIsInitialized(true);
+        console.log('✅ Video call initialized successfully');
       } catch (error: any) {
         console.error('Error initializing video call:', error);
         toast.error('Failed to start video call');
@@ -117,15 +348,13 @@ export default function VideoCall({
       console.log('🧹 Cleaning up video call...');
       stopMedia();
       disconnectPeer();
+      stopListening();
       if (sessionId) {
         endSession('component_unmounted');
       }
-      // ✅ Don't reset initializingRef here - we want it to stay true
-      // This prevents re-initialization if the component remounts
     };
-  }, []); // ✅ Empty dependency array - only run once
+  }, [meetingId, userId, userName, userRole, startMedia, initializePeer, startSession, stopMedia, disconnectPeer, stopListening, endSession, sessionId]);
 
-  // ✅ FIXED: Poll for other participants (with duplicate prevention)
   useEffect(() => {
     if (!myPeerId || !localStream || !isInitialized) return;
 
@@ -145,25 +374,19 @@ export default function VideoCall({
         
         console.log('📋 Found participants:', participants.length);
 
-        // Find other participants who aren't you
         participants.forEach((participant: any) => {
           if (participant.peerId && participant.peerId !== myPeerId) {
-            // ✅ Check if we've already called this peer
             if (calledPeersRef.current.has(participant.peerId)) {
-              // Already called, skip
               return;
             }
 
-            // ✅ Check if we're already connected to this peer
             const alreadyConnected = remotePeers.some(p => p.peerId === participant.peerId);
             
             if (!alreadyConnected) {
               console.log('🔄 Found new peer, calling:', participant.peerId);
               
-              // ✅ Mark as called BEFORE calling
               calledPeersRef.current.add(participant.peerId);
               
-              // Call the new peer
               callPeer(participant.peerId, localStream, {
                 userName,
                 userRole
@@ -174,18 +397,14 @@ export default function VideoCall({
       } catch (error) {
         console.error('Error fetching participants:', error);
       }
-    }, 3000); // Check every 3 seconds
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [myPeerId, localStream, isInitialized, remotePeers, meetingId, callPeer, userName, userRole]);
 
-  // ✅ Clean up called peers when remote peers disconnect
   useEffect(() => {
-    // Get list of currently connected peer IDs
     const connectedPeerIds = remotePeers.map(p => p.peerId);
     
-    // Remove peers from "called" list if they're no longer connected
-    // This allows us to call them again if they rejoin
     const calledPeers = Array.from(calledPeersRef.current);
     calledPeers.forEach(peerId => {
       if (!connectedPeerIds.includes(peerId)) {
@@ -210,16 +429,66 @@ export default function VideoCall({
   useEffect(() => {
     if (!peer || !localStream) return;
 
-    peer.on('call', (call) => {
+    const handleIncomingCall = (call: any) => {
       console.log('📞 Receiving call from:', call.peer);
       answerCall(call, localStream);
-    });
+    };
+
+    peer.on('call', handleIncomingCall);
+
+    return () => {
+      peer.off('call', handleIncomingCall);
+    };
   }, [peer, localStream, answerCall]);
 
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      const video = localVideoRef.current;
+      
+      const handleLoadedMetadata = () => {
+        console.log('🎥 Video metadata loaded:', video.videoWidth, 'x', video.videoHeight);
+        setVideoReady(true);
+      };
+      
+      const handleCanPlay = () => {
+        console.log('🎥 Video can play');
+        setVideoReady(true);
+      };
+      
+      video.addEventListener('loadedmetadata', handleLoadedMetadata);
+      video.addEventListener('canplay', handleCanPlay);
+      
+      return () => {
+        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        video.removeEventListener('canplay', handleCanPlay);
+      };
+    }
+  }, [localStream]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!userId) return;
+      
+      try {
+        const response = await fetch(`/api/profile/${userId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setFullProfile(data);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+
+    fetchProfile();
+  }, [userId]);
+
   const handleEndCall = async () => {
+    console.log('📞 Ending call...');
     await endSession('left_intentionally');
     stopMedia();
     disconnectPeer();
+    stopListening();
     router.push(`/meeting/${meetingId}`);
     toast.success('Call ended');
   };
@@ -267,43 +536,60 @@ export default function VideoCall({
       <div className="flex-1 flex overflow-hidden relative min-h-0">
         {/* LEFT: Video Area */}
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Video Container with Grid Layout */}
+          {/* Video Container */}
           <div className="flex-1 p-6 py-3 relative min-h-0 overflow-hidden">
-            {/* Grid Container for Videos (Google Meet Style) */}
             <div className="h-full grid gap-2" style={{
               gridTemplateColumns: remotePeers.length > 0 ? 'repeat(2, 1fr)' : '1fr',
               gridTemplateRows: '1fr'
             }}>
-              {/* Local Video (Left side when both present) */}
-              <div className="bg-[#1e2936] rounded-2xl overflow-hidden relative">
-                {videoEnabled && localStream ? (
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover mirror"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                    <div className="text-center text-white">
-                      <div className="w-20 h-20 bg-primary/70 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <span className="text-2xl font-bold">
-                          {userName.substring(0, 2).toUpperCase()}
-                        </span>
+
+              {/* Local Video */}
+              <div className="bg-[#1e2936] rounded-2xl overflow-hidden relative" style={{ minHeight: '300px' }}>
+                <div className="relative w-full h-full">
+                  {videoEnabled && localStream ? (
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover mirror"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                      <div className="text-center text-white">
+                        <div className="w-20 h-20 bg-primary/70 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <span className="text-2xl font-bold">
+                            {userName.substring(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-sm mt-2">{userName}</p>
                       </div>
-                      <p className="text-sm mt-2">{userName}</p>
                     </div>
-                  </div>
-                )}
+                  )}
+                  
+                  {/* SignDetector ONLY for candidates - NOW RECEIVES REMOTE TRANSCRIPT */}
+                  {isCandidate && isInitialized && localStream && videoReady && (
+                    <div className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                      <SignDetector
+                        videoStream={localStream}
+                        userId={userId}
+                        userName={userName}
+                        userProfile={fullProfile}
+                        onSignDetected={handleSignDetected}
+                        onTranscriptionUpdate={(text) => {
+                          // Optional: show interim sign detection
+                        }}
+                        remoteTranscript={remoteTranscriptForCandidate} // ✅ PASS INTERVIEWER'S SPEECH
+                      />
+                    </div>
+                  )}
+                </div>
                 
-                {/* Name Label */}
-                <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1.5 rounded-lg text-sm text-white font-medium">
+                <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1.5 rounded-lg text-sm text-white font-medium z-20">
                   {userName} (You)
                 </div>
 
-                {/* Mic Status */}
-                <div className="absolute top-4 right-4">
+                <div className="absolute top-4 right-4 z-20">
                   {!audioEnabled && (
                     <div className="bg-red-600 p-2 rounded-full">
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,7 +601,7 @@ export default function VideoCall({
                 </div>
               </div>
 
-              {/* Remote Video (Right side) */}
+              {/* Remote Video */}
               {remotePeers.length > 0 ? (
                 <div className="bg-[#1e2936] rounded-2xl overflow-hidden relative">
                   <video
@@ -325,12 +611,10 @@ export default function VideoCall({
                     className="w-full h-full object-cover"
                   />
                   
-                  {/* Name Label */}
                   <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1.5 rounded-lg text-sm text-white font-medium">
                     {remotePeers[0].userName || 'Remote User'}
                   </div>
 
-                  {/* Timer Badge (Top Right) */}
                   <div className="absolute top-4 right-4 bg-red-600 px-3 py-1.5 rounded-full flex items-center gap-2">
                     <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                     <span className="text-white text-sm font-medium">
@@ -339,35 +623,22 @@ export default function VideoCall({
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#1e2936] rounded-2xl overflow-hidden relative hidden">
-                  {/* Hidden when no remote peers - local video takes full width */}
-                </div>
+                <div className="bg-[#1e2936] rounded-2xl overflow-hidden relative hidden"></div>
               )}
             </div>
           </div>
 
-          {/* Transcription Box - Now has flex-shrink-0 to maintain its size */}
-          <div className="mx-6 mb-3 bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 flex-shrink-0">
-            <div className="flex items-start gap-3 max-w-3xl">
-              {/* Audio Wave Icon */}
-              <div className="flex items-center gap-1 mt-1">
-                <div className="w-1 h-4 bg-white rounded-full animate-pulse"></div>
-                <div className="w-1 h-6 bg-white rounded-full animate-pulse" style={{animationDelay: '100ms'}}></div>
-                <div className="w-1 h-5 bg-white rounded-full animate-pulse" style={{animationDelay: '200ms'}}></div>
-                <div className="w-1 h-7 bg-white rounded-full animate-pulse" style={{animationDelay: '300ms'}}></div>
-              </div>
-              
-              {/* Transcription Text */}
-              <div className="flex-1">
-                <p className="text-xs text-gray-400 mb-1">Live Transcription</p>
-                <p className="text-sm text-gray-200">
-                  Thank you everyone for joining the virtual assistant meeting. I want to know a little about you!
-                </p>
-              </div>
-            </div>
+          {/* Live Transcription Box - ONE LINE */}
+          <div className="mx-6 mb-3 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700/50 flex-shrink-0" style={{ minHeight: '100px' }}>
+            <LiveTranscription
+              currentText={currentTranscription.text}
+              currentSpeaker={currentTranscription.speaker}
+              currentSpeakerRole={currentTranscription.speakerRole}
+              isCurrentUserSpeaking={currentTranscription.isLocal}
+            />
           </div>
 
-          {/* Controls Bar - flex-shrink-0 ensures it stays at the bottom */}
+          {/* Controls Bar */}
           <div className="bg-[#161929] py-3 border-t border-gray-800 flex-shrink-0">
             <VideoControls
               audioEnabled={audioEnabled}
@@ -391,7 +662,7 @@ export default function VideoCall({
           </button>
         )}
 
-        {/* RIGHT: Sidebar - Collapsible */}
+        {/* RIGHT: Sidebar */}
         <div 
           className={`bg-[#1a1f2e] border-l border-gray-800 flex flex-col transition-all duration-300 ease-in-out min-h-0 ${
             sidebarOpen ? 'w-96' : 'w-0'
@@ -400,7 +671,6 @@ export default function VideoCall({
         >
           {sidebarOpen && (
             <>
-              {/* Close Button */}
               <div className="flex items-center justify-between border-b border-gray-800 flex-shrink-0">
                 <button
                   onClick={() => setSidebarOpen(false)}
@@ -411,7 +681,6 @@ export default function VideoCall({
                 </button>
               </div>
 
-              {/* Participants Section */}
               <div className="p-3 border-b border-gray-800 flex-shrink-0 max-h-[200px] overflow-y-auto">
                 <ParticipantsList
                   participants={[
@@ -436,15 +705,17 @@ export default function VideoCall({
                 />
               </div>
 
-              {/* Model Metrics Section */}
-              <div className="p-3 border-b border-gray-800 flex-shrink-0">
-                <ModelMetrics
-                  confidence={75}
-                  templateResponses={79}
-                />
-              </div>
+              {/* Model Metrics - ONLY for candidates */}
+              {isCandidate && (
+                <div className="p-3 border-b border-gray-800 flex-shrink-0">
+                  <ModelMetrics
+                    confidence={signConfidence * 100}
+                    templateResponses={79}
+                  />
+                </div>
+              )}
 
-              {/* Chat Section - Toggleable - Takes remaining space */}
+              {/* Chat Section */}
               {showChat ? (
                 <div className="flex-1 flex flex-col overflow-hidden min-h-0">
                   <ChatPanel
@@ -463,6 +734,19 @@ export default function VideoCall({
               )}
             </>
           )}
+          {/* Add this temporary debug button to your VideoCall JSX */}
+{isCompanyOrGuest && (
+  <button 
+    onClick={() => {
+      console.log('🔊 Testing remote speech synthesis');
+      const utterance = new SpeechSynthesisUtterance('Test speech from remote');
+      window.speechSynthesis.speak(utterance);
+    }}
+    className="fixed bottom-20 left-4 bg-green-500 text-white p-2 rounded z-50"
+  >
+    Test Remote Speech
+  </button>
+)}
         </div>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl'; // ✅ Add this
 import { useAuth } from '@/app/context/AuthContext';
 import InteractiveCalendar from '@components/schedule/InteractiveCalendar';
 import { Video, Plus, Users, Calendar as CalendarDays, Briefcase } from 'lucide-react';
@@ -18,6 +19,9 @@ import { JobsSectionSkeleton } from '@components/skeletons/JobsSkeleton';
 export default function CandidateDashboardPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
+  const t = useTranslations('dashboard'); // ✅ Add this
+  const tSearch = useTranslations('search'); // ✅ Add this for search placeholder
+  
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedView, setSelectedView] = useState('weekly');
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
@@ -58,12 +62,11 @@ export default function CandidateDashboardPage() {
   const fetchJobs = async () => {
     setJobsLoading(true);
     try {
-      // Always fetch diverse jobs for dashboard (no search)
       const response = await fetch('/api/jobs/diverse');
       const data = await response.json();
       
       if (data.success) {
-        setJobListings(data.jobs.slice(0, 3)); // Only show 3 jobs on dashboard
+        setJobListings(data.jobs.slice(0, 3));
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -108,11 +111,10 @@ export default function CandidateDashboardPage() {
           {/* Welcome Section */}
           <div className="mb-8 mt-20 text-center">
             <h1 className="text-3xl font-bold mb-2">
-              Welcome, {profile?.full_name || 'User'}
+              {t('welcome')}, {profile?.full_name || 'User'}
             </h1>
-            <p className="text-gray-600">
-              Your career journey just got clearer. Use RSL-Connect to<br />
-              effortlessly manage join real-time sign language interviews.
+            <p className="text-gray-600 dark:text-gray-400 px-10">
+              {t('tagline')}
             </p>
           </div>
 
@@ -120,22 +122,22 @@ export default function CandidateDashboardPage() {
           <div className="grid grid-cols-2 gap-y-6 mb-8 max-w-3xs mx-auto">
             <ActionButton 
               icon={<Video className="w-9.5 h-9.5" fill="currentColor" />} 
-              label="New Meeting"
+              label={t('newMeeting')}
               onClick={() => setIsNewMeetingOpen(true)}
             />
             <ActionButton 
               icon={<Plus className="w-9.5 h-9.5" strokeWidth={3} />} 
-              label="Join Meeting"
+              label={t('joinMeeting')}
               onClick={() => setIsJoinMeetingOpen(true)}
             />
             <ActionButton 
               icon={<CalendarDays className="w-9 h-9" strokeWidth={3}/>} 
-              label="Schedule"
+              label={t('schedule')}
               onClick={() => setIsScheduleMeetingOpen(true)}
             />
             <ActionButton 
               icon={<Users className="w-9 h-9" fill="currentColor" />} 
-              label="People"
+              label={t('people')}
               onClick={() => {/* Add people action */}}
             />
           </div>
@@ -147,13 +149,13 @@ export default function CandidateDashboardPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Find Jobs</CardTitle>
+                  <CardTitle>{t('findJobs')}</CardTitle>
                   <Button 
                     variant="link" 
                     className="text-primary"
                     onClick={() => router.push('/candidate/jobs')}
                   >
-                    See All
+                    {t('seeAll')}
                   </Button>
                 </div>
               </CardHeader>
@@ -170,10 +172,10 @@ export default function CandidateDashboardPage() {
                   <>
                     {/* Table Header */}
                     <div className="grid grid-cols-4 gap-4 px-4 py-3 bg-muted rounded-lg mb-3 text-xs font-semibold text-muted-foreground">
-                      <div>COMPANY NAME</div>
-                      <div>JOB TYPE</div>
-                      <div>JOB TITLE</div>
-                      <div>ACTIONS</div>
+                      <div>{t('companyName')}</div>
+                      <div>{t('jobType')}</div>
+                      <div>{t('jobTitle')}</div>
+                      <div>{t('actions')}</div>
                     </div>
 
                     {/* Job Listings */}

@@ -113,13 +113,13 @@ export default function MeetingPreviewPage({ params }: MeetingPreviewPageProps) 
   // Handle sign in
   const handleSignIn = () => {
     localStorage.setItem('redirectAfterAuth', `/meeting/${meetingId}`);
-    router.push('/signin');
+    router.push('/auth/login');
   };
 
   // Handle sign up
   const handleSignUp = () => {
     localStorage.setItem('redirectAfterAuth', `/meeting/${meetingId}`);
-    router.push('/signup');
+    router.push('/auth/register');
   };
 
   // Handle join call

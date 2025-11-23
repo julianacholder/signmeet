@@ -16,6 +16,14 @@ export const profiles = pgTable('profiles', {
   industryOther: text('industry_other'),
   role: text('role'),
   roleOther: text('role_other'),
+
+  skills: text('skills').array(),
+  yearsExperience: integer('years_experience'),
+  jobTitle: text('job_title'),  
+  bio: text('bio'),
+  education: text('education'),
+  achievements: text('achievements').array(),
+
   
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

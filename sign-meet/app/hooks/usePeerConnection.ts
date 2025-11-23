@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Peer, { MediaConnection } from 'peerjs';
+import Peer, { MediaConnection, DataConnection } from 'peerjs';
 
 interface RemotePeer {
   peerId: string;
@@ -7,6 +7,23 @@ interface RemotePeer {
   userName?: string;
   userRole?: string;
   connection?: MediaConnection;
+  dataConnection?: DataConnection;
+}
+
+interface TranscriptionMessage {
+  type: 'transcription';
+  text: string;
+  sender: string;
+  senderRole: string;
+  timestamp: number;
+  shouldSpeak?: boolean;
+}
+
+// ✅ NEW: Interface for transcription metadata
+interface TranscriptionMetadata {
+  sender: string;
+  senderRole: string;
+  shouldSpeak?: boolean;
 }
 
 interface UsePeerConnectionReturn {
@@ -24,9 +41,15 @@ interface UsePeerConnectionReturn {
   answerCall: (call: MediaConnection, stream: MediaStream) => void;
   disconnectPeer: () => void;
   removePeer: (peerId: string) => void;
+  sendTranscription: (text: string, metadata: TranscriptionMetadata) => void; // ✅ UPDATED
+  
+  // Data channel events
+  onTranscriptionReceived?: (message: TranscriptionMessage) => void;
 }
 
-export function usePeerConnection(): UsePeerConnectionReturn {
+export function usePeerConnection(
+  onTranscriptionReceived?: (message: TranscriptionMessage) => void
+): UsePeerConnectionReturn {
   const [peer, setPeer] = useState<Peer | null>(null);
   const [myPeerId, setMyPeerId] = useState<string | null>(null);
   const [remotePeers, setRemotePeers] = useState<RemotePeer[]>([]);
@@ -36,6 +59,62 @@ export function usePeerConnection(): UsePeerConnectionReturn {
 
   const peerRef = useRef<Peer | null>(null);
   const callsRef = useRef<Map<string, MediaConnection>>(new Map());
+  const dataConnectionsRef = useRef<Map<string, DataConnection>>(new Map());
+  const onTranscriptionReceivedRef = useRef(onTranscriptionReceived);
+
+  // Update ref when callback changes
+  useEffect(() => {
+    onTranscriptionReceivedRef.current = onTranscriptionReceived;
+  }, [onTranscriptionReceived]);
+
+  // Setup data connection
+  const setupDataConnection = useCallback((conn: DataConnection, peerId: string) => {
+    console.log('📡 Setting up data connection with:', peerId);
+    
+    conn.on('open', () => {
+      console.log('✅ Data connection opened with:', peerId);
+      dataConnectionsRef.current.set(peerId, conn);
+      
+      // Update remote peer with data connection
+      setRemotePeers(prev => 
+        prev.map(p => 
+          p.peerId === peerId 
+            ? { ...p, dataConnection: conn }
+            : p
+        )
+      );
+    });
+
+     conn.on('data', (data: any) => {
+  console.log('📨 Received data from:', peerId, data);
+  
+  if (data.type === 'transcription' && onTranscriptionReceivedRef.current) {
+    const shouldSpeak = data.shouldSpeak === true || data.shouldSpeak === 'true';
+    
+    const cleanMessage: TranscriptionMessage = {
+      type: 'transcription',
+      text: data.text,
+      sender: data.sender,
+      senderRole: data.senderRole,
+      timestamp: data.timestamp,
+      shouldSpeak: shouldSpeak
+    };
+    
+    onTranscriptionReceivedRef.current(cleanMessage);
+    // ✅ Speech synthesis is handled in VideoCall.tsx, not here
+  }
+});
+
+    conn.on('close', () => {
+      console.log('🔴 Data connection closed with:', peerId);
+      dataConnectionsRef.current.delete(peerId);
+    });
+
+    conn.on('error', (err) => {
+      console.error('❌ Data connection error with', peerId, ':', err);
+      dataConnectionsRef.current.delete(peerId);
+    });
+  }, []);
 
   // Initialize PeerJS connection
   const initializePeer = useCallback(async (userId?: string): Promise<string | null> => {
@@ -55,13 +134,12 @@ export function usePeerConnection(): UsePeerConnectionReturn {
 
       console.log('🔄 Initializing peer with ID:', peerId);
 
-      // ✅ FIXED: Use correct PeerJS server
       const newPeer = new Peer(peerId, {
-        host: '0.peerjs.com',  // ✅ Changed from 'peerjs.com' to '0.peerjs.com'
+        host: '0.peerjs.com',
         port: 443,
         path: '/',
         secure: true,
-        debug: 2,  // ✅ Added: Show debug logs
+        debug: 2,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -83,39 +161,33 @@ export function usePeerConnection(): UsePeerConnectionReturn {
       // Handle incoming calls
       newPeer.on('call', (call) => {
         console.log('📞 Incoming call from:', call.peer);
-        
-        // Store the call
         callsRef.current.set(call.peer, call);
+      });
 
-        // You'll need to answer this call with your stream
-        // This is typically done in the component using the hook
+      // Handle incoming data connections
+      newPeer.on('connection', (conn) => {
+        console.log('📡 Incoming data connection from:', conn.peer);
+        setupDataConnection(conn, conn.peer);
       });
 
       // Handle peer errors
-     newPeer.on('disconnected', () => {
-  console.log('⚠️ Peer disconnected');
-  setIsConnected(false);
-  
-  // Only try to reconnect if peer is actually disconnected
-  if (peerRef.current && !peerRef.current.destroyed && peerRef.current.disconnected) {
-    console.log('🔄 Attempting to reconnect...');
-    setTimeout(() => {
-      if (peerRef.current && !peerRef.current.destroyed) {
-        peerRef.current.reconnect();
-      }
-    }, 1000); // Wait 1 second before reconnecting
-  }
-});
+      newPeer.on('error', (err) => {
+        console.error('❌ Peer error:', err);
+        setError(err.message || 'Peer connection error');
+      });
 
       // Handle peer disconnection
       newPeer.on('disconnected', () => {
         console.log('⚠️ Peer disconnected');
         setIsConnected(false);
         
-        // Try to reconnect
-        if (peerRef.current && !peerRef.current.destroyed) {
+        if (peerRef.current && !peerRef.current.destroyed && peerRef.current.disconnected) {
           console.log('🔄 Attempting to reconnect...');
-          peerRef.current.reconnect();
+          setTimeout(() => {
+            if (peerRef.current && !peerRef.current.destroyed) {
+              peerRef.current.reconnect();
+            }
+          }, 1000);
         }
       });
 
@@ -133,7 +205,7 @@ export function usePeerConnection(): UsePeerConnectionReturn {
       setIsConnecting(false);
       return null;
     }
-  }, []);
+  }, [setupDataConnection]);
 
   // Call another peer
   const callPeer = useCallback((
@@ -149,19 +221,25 @@ export function usePeerConnection(): UsePeerConnectionReturn {
     try {
       console.log('📞 Calling peer:', peerId);
       
+      // Create media connection
       const call = peerRef.current.call(peerId, stream, {
         metadata: metadata || {}
       });
 
-      // Store the call
       callsRef.current.set(peerId, call);
+
+      // Create data connection
+      const dataConn = peerRef.current.connect(peerId, {
+        reliable: true
+      });
+      
+      setupDataConnection(dataConn, peerId);
 
       // Handle when call is answered
       call.on('stream', (remoteStream) => {
         console.log('✅ Received stream from:', peerId);
         
         setRemotePeers(prev => {
-          // Check if peer already exists
           const existingIndex = prev.findIndex(p => p.peerId === peerId);
           
           const newPeer: RemotePeer = {
@@ -169,16 +247,15 @@ export function usePeerConnection(): UsePeerConnectionReturn {
             stream: remoteStream,
             userName: metadata?.userName,
             userRole: metadata?.userRole,
-            connection: call
+            connection: call,
+            dataConnection: dataConnectionsRef.current.get(peerId)
           };
 
           if (existingIndex >= 0) {
-            // Update existing peer
             const updated = [...prev];
             updated[existingIndex] = newPeer;
             return updated;
           } else {
-            // Add new peer
             return [...prev, newPeer];
           }
         });
@@ -189,6 +266,13 @@ export function usePeerConnection(): UsePeerConnectionReturn {
         console.log('🔴 Call closed with:', peerId);
         setRemotePeers(prev => prev.filter(p => p.peerId !== peerId));
         callsRef.current.delete(peerId);
+        
+        // Close data connection
+        const dataConn = dataConnectionsRef.current.get(peerId);
+        if (dataConn) {
+          dataConn.close();
+          dataConnectionsRef.current.delete(peerId);
+        }
       });
 
       // Handle call errors
@@ -202,16 +286,13 @@ export function usePeerConnection(): UsePeerConnectionReturn {
       console.error('❌ Error calling peer:', err);
       setError(err.message || 'Failed to call peer');
     }
-  }, []);
+  }, [setupDataConnection]);
 
   // Answer incoming call
   const answerCall = useCallback((call: MediaConnection, stream: MediaStream) => {
     console.log('📞 Answering call from:', call.peer);
     
-    // Answer the call with your stream
     call.answer(stream);
-
-    // Store the call
     callsRef.current.set(call.peer, call);
 
     // Handle when remote stream is received
@@ -226,7 +307,8 @@ export function usePeerConnection(): UsePeerConnectionReturn {
           stream: remoteStream,
           userName: call.metadata?.userName,
           userRole: call.metadata?.userRole,
-          connection: call
+          connection: call,
+          dataConnection: dataConnectionsRef.current.get(call.peer)
         };
 
         if (existingIndex >= 0) {
@@ -248,6 +330,37 @@ export function usePeerConnection(): UsePeerConnectionReturn {
 
   }, []);
 
+  const sendTranscription = useCallback((
+  text: string, 
+  metadata: TranscriptionMetadata
+) => {
+  const message: TranscriptionMessage = {
+    type: 'transcription',
+    text,
+    sender: metadata.sender,
+    senderRole: metadata.senderRole,
+    timestamp: Date.now(),
+    shouldSpeak: metadata.shouldSpeak // ✅ Include speech flag
+  };
+
+  console.log('📤 Sending transcription to', dataConnectionsRef.current.size, 'peers', 
+    metadata.shouldSpeak ? '(with speech)' : '(text only)');
+  
+  // ✅ DEBUG: Log the exact message being sent
+  console.log('🔍 Sending message:', JSON.stringify(message, null, 2));
+
+  dataConnectionsRef.current.forEach((conn, peerId) => {
+    if (conn.open) {
+      try {
+        conn.send(message);
+        console.log('✅ Sent transcription to:', peerId);
+      } catch (err) {
+        console.error('❌ Error sending transcription to', peerId, ':', err);
+      }
+    }
+  });
+}, []);
+
   // Remove a specific peer
   const removePeer = useCallback((peerId: string) => {
     const call = callsRef.current.get(peerId);
@@ -255,6 +368,13 @@ export function usePeerConnection(): UsePeerConnectionReturn {
       call.close();
       callsRef.current.delete(peerId);
     }
+    
+    const dataConn = dataConnectionsRef.current.get(peerId);
+    if (dataConn) {
+      dataConn.close();
+      dataConnectionsRef.current.delete(peerId);
+    }
+    
     setRemotePeers(prev => prev.filter(p => p.peerId !== peerId));
   }, []);
 
@@ -263,6 +383,10 @@ export function usePeerConnection(): UsePeerConnectionReturn {
     // Close all active calls
     callsRef.current.forEach(call => call.close());
     callsRef.current.clear();
+
+    // Close all data connections
+    dataConnectionsRef.current.forEach(conn => conn.close());
+    dataConnectionsRef.current.clear();
 
     // Destroy peer connection
     if (peerRef.current) {
@@ -295,6 +419,8 @@ export function usePeerConnection(): UsePeerConnectionReturn {
     callPeer,
     answerCall,
     disconnectPeer,
-    removePeer
+    removePeer,
+    sendTranscription,
+    onTranscriptionReceived
   };
 }
