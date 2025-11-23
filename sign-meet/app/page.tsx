@@ -126,35 +126,48 @@ export default function Home() {
               </div>
 
               {/* Floating Calendar Card */}
-              <div className="absolute top-8 -right-12 bg-white rounded-xl shadow-xl p-6 z-30 animate-float">
-                <h4 className="font-bold text-sm mb-3">Select a Date & Time</h4>
-                <p className="text-xs text-gray-500 mb-3">Monday, July 22</p>
-                
-                {/* Time slots */}
-                <div className="space-y-2">
-                  <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition">
-                    10:00am
-                  </div>
-                  <div className="border border-[#0069FF] bg-primary text-white rounded px-3 py-2 text-sm text-center cursor-pointer flex items-center justify-between">
-                    <span>11:00am</span>
-                    <span className="text-xs">Confirm</span>
-                  </div>
-                  <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition">
-                    1:00pm
-                  </div>
-                  <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition">
-                    2:30pm
-                  </div>
-                  <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition">
-                    4:00pm
-                  </div>
-                </div>
+<div className="absolute top-8 -right-12 bg-white rounded-xl shadow-xl p-6 z-30 animate-float">
+  
+  <h4 className="font-bold text-sm mb-3 text-[#1a1a1a]">
+    Select a Date & Time
+  </h4>
 
-                <div className="mt-4 pt-3 border-t text-xs text-gray-500">
-                  <span className="font-medium">Time zone</span>
-                  <p>Central African Time - CAT</p>
-                </div>
-              </div>
+  <p className="text-xs text-[#555] mb-3">
+    Monday, July 22
+  </p>
+
+  {/* Time slots */}
+  <div className="space-y-2">
+
+    <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition text-[#1a1a1a]">
+      10:00am
+    </div>
+
+    <div className="border border-[#0069FF] bg-primary text-white rounded px-3 py-2 text-sm text-center cursor-pointer flex items-center justify-between">
+      <span className="text-white">11:00am</span>
+      <span className="text-white text-xs">Confirm</span>
+    </div>
+
+    <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition text-[#1a1a1a]">
+      1:00pm
+    </div>
+
+    <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition text-[#1a1a1a]">
+      2:30pm
+    </div>
+
+    <div className="border border-gray-200 rounded px-3 py-2 text-sm text-center hover:border-[#0069FF] cursor-pointer transition text-[#1a1a1a]">
+      4:00pm
+    </div>
+  </div>
+
+  <div className="mt-4 pt-3 border-t text-xs text-[#555]">
+    <span className="font-medium text-[#1a1a1a]">Time zone</span>
+    <p className="text-[#555]">Central African Time - CAT</p>
+  </div>
+
+</div>
+
 
               {/* Mini Calendar Widget */}
               <div className="absolute -bottom-8 -left-8 bg-white rounded-lg shadow-lg p-4 z-10 animate-float-delayed">
@@ -195,37 +208,40 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition">
-              <div className="w-12 h-12 bg-[#2E3890] rounded-lg flex items-center justify-center mb-4">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Smart scheduling</h3>
-              <p className="text-gray-600">
-                Share your availability and let candidates book interviews that work for everyone.
-              </p>
-            </div>
+         <div className="grid md:grid-cols-3 gap-8">
 
-            <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition">
-              <div className="w-12 h-12 bg-[#4C58C0] rounded-lg flex items-center justify-center mb-4">
-                <Video className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">RSL Translation</h3>
-              <p className="text-gray-600">
-                Real-time Rwanda Sign Language translation built directly into every video interview.
-              </p>
-            </div>
+  <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition">
+    <div className="w-12 h-12 bg-[#2E3890] rounded-lg flex items-center justify-center mb-4">
+      <Calendar className="w-6 h-6 text-white" />
+    </div>
+    <h3 className="text-xl font-bold mb-3 text-[#1a1a1a]">Smart scheduling</h3>
+    <p className="text-[#555]">
+      Share your availability and let candidates book interviews that work for everyone.
+    </p>
+  </div>
 
-            <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition">
-              <div className="w-12 h-12 bg-[#2E3890] rounded-lg flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Team collaboration</h3>
-              <p className="text-gray-600">
-                Coordinate team interviews and track your diversity and inclusion impact.
-              </p>
-            </div>
-          </div>
+  <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition">
+    <div className="w-12 h-12 bg-[#4C58C0] rounded-lg flex items-center justify-center mb-4">
+      <Video className="w-6 h-6 text-white" />
+    </div>
+    <h3 className="text-xl font-bold mb-3 text-[#1a1a1a]">RSL Translation</h3>
+    <p className="text-[#555]">
+      Real-time Rwanda Sign Language translation built directly into every video interview.
+    </p>
+  </div>
+
+  <div className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition">
+    <div className="w-12 h-12 bg-[#2E3890] rounded-lg flex items-center justify-center mb-4">
+      <Users className="w-6 h-6 text-white" />
+    </div>
+    <h3 className="text-xl font-bold mb-3 text-[#1a1a1a]">Team collaboration</h3>
+    <p className="text-[#555]">
+      Coordinate team interviews and track your diversity and inclusion impact.
+    </p>
+  </div>
+
+</div>
+
         </div>
       </section>
 
@@ -240,7 +256,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-8 rounded-2xl">
-              <h3 className="text-2xl font-bold mb-4">For Job Seekers</h3>
+              <h3 className="text-2xl font-bold mb-4 text-[#1a1a1a]">For Job Seekers</h3>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-[#2E3890] mr-3 mt-1 flex-shrink-0" />
@@ -261,7 +277,7 @@ export default function Home() {
             </div>
 
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-8 rounded-2xl">
-              <h3 className="text-2xl font-bold mb-4">For Companies</h3>
+              <h3 className="text-2xl font-bold mb-4 text-[#1a1a1a]">For Companies</h3>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-[#4C58C0] mr-3 mt-1 flex-shrink-0" />
@@ -319,7 +335,7 @@ export default function Home() {
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
+              <h4 className="font-semibold mb-4 text-[#1a1a1a]">Product</h4>
               <ul className="space-y-2 text-gray-600 text-sm">
                 <li><Link href="/features" className="hover:text-[#2E3890]">Features</Link></li>
                 <li><Link href="/pricing" className="hover:text-[#2E3890]">Pricing</Link></li>
@@ -327,7 +343,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
+              <h4 className="font-semibold mb-4 text-[#1a1a1a]">Company</h4>
               <ul className="space-y-2 text-gray-600 text-sm">
                 <li><Link href="/about" className="hover:text-[#2E3890]">About</Link></li>
                 <li><Link href="/careers" className="hover:text-[#2E3890]">Careers</Link></li>
@@ -335,7 +351,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Resources</h4>
+              <h4 className="font-semibold mb-4 text-[#1a1a1a]">Resources</h4>
               <ul className="space-y-2 text-gray-600 text-sm">
                 <li><Link href="/blog" className="hover:text-[#2E3890]">Blog</Link></li>
                 <li><Link href="/help" className="hover:text-[#2E3890]">Help Center</Link></li>
