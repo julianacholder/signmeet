@@ -5,11 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import TermsModal from '@components/modals/TermsModal';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showTerms, setShowTerms] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -156,6 +158,28 @@ export default function LoginPage() {
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
+
+            {/* Terms Acknowledgment */}
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-600">
+                By logging in, you agree to our{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="text-[#2E3890] hover:underline font-medium"
+                >
+                  Terms and Conditions
+                </button>
+                {' '}and{' '}
+                <Link 
+                  href="/privacy-policy" 
+                  className="text-[#2E3890] hover:underline font-medium"
+                  target="_blank"
+                >
+                  Privacy Policy
+                </Link>
+              </p>
+            </div>
           </form>
 
           <div className="mt-4 text-center">
@@ -168,6 +192,9 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Terms Modal */}
+      <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
     </div>
   );
 }

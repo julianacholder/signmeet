@@ -214,13 +214,32 @@ export async function GET() {
 
 // Optional: Clear cache for a specific user (useful after creating/updating interviews)
 export async function POST(request: Request) {
-  const { userId, action } = await request.json();
-  
-  if (action === 'clearCache' && userId) {
-    interviewsCache.delete(userId);
-    console.log(' Cleared cache for user:', userId);
-    return NextResponse.json({ success: true });
+  const body = await request.json();
+  const { userId: bodyUserId, action } = body || {};
+
+  if (action === 'clearCache') {
+    let targetUserId = bodyUserId;
+
+    // If no userId provided, attempt to resolve current user from auth cookies
+    if (!targetUserId) {
+      try {
+        const supabase = createRouteHandlerClient({ cookies: () => cookies() });
+        const { data: { user } } = await supabase.auth.getUser();
+        targetUserId = user?.id;
+      } catch (err) {
+        console.error('Error resolving user for cache clear:', err);
+      }
+    }
+
+    if (targetUserId) {
+      interviewsCache.delete(targetUserId);
+      console.log('✅ Cleared cache for user:', targetUserId);
+      return NextResponse.json({ success: true });
+    }
+
+    console.log('⚠️ clearCache called but no userId resolved');
+    return NextResponse.json({ error: 'No userId provided or resolved' }, { status: 400 });
   }
-  
+
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 }

@@ -22,9 +22,9 @@ export default function Home() {
               <button className="flex items-center text-gray-700 hover:text-[#2E3890] font-medium">
                 Product <ChevronDown className="w-4 h-4 ml-1" />
               </button>
-              <button className="flex items-center text-gray-700 hover:text-[#2E3890] font-medium">
-                Solutions <ChevronDown className="w-4 h-4 ml-1" />
-              </button>
+              <Link href="/privacy-policy" className="flex items-center text-gray-700 hover:text-[#2E3890] font-medium">
+                Privacy Policy
+              </Link>
               <button className="flex items-center text-gray-700 hover:text-[#2E3890] font-medium">
                 Resources <ChevronDown className="w-4 h-4 ml-1" />
               </button>
@@ -113,7 +113,7 @@ export default function Home() {
             <div className="relative">
               {/* Main Video Card with animation */}
               <div className="bg-transparent p-3 relative z-20 animate-slide-in-right">
-                <div className="relative w-[550px] h-[340px]">
+                <div className="relative w-[550px] h-[350px]">
   <Image
     src="/video.png"
     alt="SignMeet Video Interface"

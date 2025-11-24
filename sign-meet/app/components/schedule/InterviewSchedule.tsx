@@ -11,7 +11,7 @@ import CancelMeetingDialog from '@components/schedule/CancelMeetingDialog';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 
-interface Interview {
+export interface Interview {
   id: string;
   title: string;
   startTime: Date | string;
@@ -31,13 +31,15 @@ interface InterviewScheduleProps {
   interviews: Interview[];
   onJoinMeeting?: (meetingLink: string) => void;
   onRefresh?: () => void;
+  onAddInterview?: (interview: Interview) => void;
 }
 
 export default function InterviewSchedule({ 
   userRole, 
   interviews,
   onJoinMeeting,
-  onRefresh
+  onRefresh,
+  onAddInterview
 }: InterviewScheduleProps) {
   const [showMeetingDetails, setShowMeetingDetails] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
@@ -322,6 +324,23 @@ export default function InterviewSchedule({
                           <p className="text-xs text-muted-foreground">
                             {interview.displayRole}: {interview.displayName}
                           </p>
+
+                          {/* Participants preview */}
+                          {interview.participants && interview.participants.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {interview.participants.slice(0, 3).map((p, i) => {
+                                const name = (p && (p.name || p.guestName || p.guestEmail || p.email)) || String(p);
+                                return (
+                                  <div key={i} className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                                    {name}
+                                  </div>
+                                );
+                              })}
+                              {interview.participants.length > 3 && (
+                                <div className="text-xs bg-gray-100 px-2 py-1 rounded-full">+{interview.participants.length - 3} more</div>
+                              )}
+                            </div>
+                          )}
                           
                           <div className="flex items-center justify-between">
                             <p className="text-xs text-[#00BFFF] bg-[#E5F9FF] w-fit px-2 py-1 rounded-sm">
@@ -510,6 +529,8 @@ export default function InterviewSchedule({
                 <p className="mt-1">{selectedInterview.displayName}</p>
               </div>
 
+              
+
               <div>
                 <label className="text-sm font-medium text-gray-600">Meeting ID</label>
                 <div className="flex items-center gap-2 mt-1">
@@ -594,11 +615,16 @@ Join Link: ${selectedInterview.meetingLink}`;
           setSelectedDate(null);
           setInterviewToReschedule(null);
         }}
-        onSuccess={() => {
+        onSuccess={(newInterview) => {
           setIsScheduleModalOpen(false);
           setSelectedDate(null);
           setInterviewToReschedule(null);
-          onRefresh?.();
+          // If parent provided an append callback, use it for immediate UI update
+          if (newInterview) {
+            onAddInterview?.(newInterview as Interview);
+          } else {
+            onRefresh?.();
+          }
         }}
         prefilledDate={selectedDate}
         // Note: Add these props to your ScheduleMeetingModal when implementing reschedule

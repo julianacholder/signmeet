@@ -8,6 +8,7 @@ import { createUserProfile } from '@/lib/api/auth';
 import AuthLayout from '@/app/components/auth/AuthLayout';
 import UserTypeSelector from '@/app/components/auth/UserTypeSelector';
 import RegisterFormFields from '@/app/components/auth/RegisterFormFields';
+import TermsModal from '@components/modals/TermsModal';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,6 +16,8 @@ export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showTerms, setShowTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -50,6 +53,13 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if terms are accepted
+    if (!acceptedTerms) {
+      setError('You must accept the Terms and Conditions to create an account.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -131,6 +141,41 @@ export default function RegisterPage() {
           onInputChange={handleInputChange}
         />
 
+        {/* Terms and Conditions Checkbox - Show on last step */}
+        {(userType === 'deaf' || (userType === 'company' && currentStep === 2)) && (
+          <div className="mb-6">
+            <label className="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                disabled={loading}
+                className="mt-1 w-4 h-4 text-[#2E3890] border-gray-300 rounded focus:ring-[#2E3890] disabled:opacity-50"
+                required
+              />
+              <span className="text-sm text-gray-700">
+                I agree to the{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="text-[#2E3890] hover:underline font-medium"
+                >
+                  Terms and Conditions
+                </button>
+                {' '}and{' '}
+                <Link 
+                  href="/privacy-policy" 
+                  className="text-[#2E3890] hover:underline font-medium"
+                  target="_blank"
+                >
+                  Privacy Policy
+                </Link>
+                {' '}<span className="text-red-500">*</span>
+              </span>
+            </label>
+          </div>
+        )}
+
         {/* Buttons */}
         {userType === 'company' && currentStep === 2 ? (
           <div className="flex gap-3">
@@ -144,7 +189,7 @@ export default function RegisterPage() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
               className="flex-1 bg-primary text-white py-2.5 rounded-md font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating...' : 'Create Account'}
@@ -153,7 +198,7 @@ export default function RegisterPage() {
         ) : (
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (userType === 'deaf' && !acceptedTerms)}
             className="w-full bg-primary text-white py-2.5 rounded-md font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Loading...' : (userType === 'company' ? 'Next' : 'Create Account')}
@@ -169,6 +214,9 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
+
+      {/* Terms Modal */}
+      <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
     </AuthLayout>
   );
 }

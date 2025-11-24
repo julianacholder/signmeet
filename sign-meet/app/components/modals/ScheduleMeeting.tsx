@@ -29,7 +29,7 @@ import { format, parseISO } from 'date-fns';
 interface ScheduleMeetingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (newInterview?: any) => void;
   prefilledDate?: Date | null;
   editMode?: boolean;
   interviewToEdit?: {
@@ -47,8 +47,8 @@ export default function ScheduleMeetingModal({
   onClose,
   onSuccess,
   prefilledDate,
-  editMode = false, // ✅ NEW
-  interviewToEdit // ✅ NEW
+  editMode = false, 
+  interviewToEdit 
 }: ScheduleMeetingModalProps) {
   const [meetingData, setMeetingData] = useState({
     title: '',
@@ -315,9 +315,47 @@ export default function ScheduleMeetingModal({
         });
       }
       
-      // Call success callback
+      // Try to clear server-side interviews cache so the new meeting appears immediately
+      try {
+        await fetch('/api/interviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'clearCache' }),
+        });
+      } catch (err) {
+        console.warn('Failed to clear interviews cache:', err);
+      }
+
+      // Call success callback AFTER cache clear so the refreshed data is fresh
       if (onSuccess) {
-        onSuccess();
+        try {
+          // Build a normalized interview object for optimistic UI update.
+          // Use the server response where available, but fall back to the form data
+          const serverInterview = data?.interview || {};
+
+          const createdInterview = {
+            id: serverInterview.id || serverInterview.meetingId || serverInterview.interviewId || (serverInterview.meetingId ?? '') || (serverInterview.meetingId ? String(serverInterview.meetingId) : ''),
+            title: serverInterview.title || meetingData.title,
+            startTime: serverInterview.startTime || startDateTime.toISOString(),
+            endTime: serverInterview.endTime || endDateTime.toISOString(),
+            // Show the first participant email as the display name (best-effort)
+            displayName: (serverInterview.participants && serverInterview.participants[0] && (serverInterview.participants[0].guestName || serverInterview.participants[0].name || serverInterview.participants[0].guestEmail)) || participants[0] || 'TBD',
+            displayRole: 'Interviewer',
+            type: serverInterview.type || meetingData.meetingType,
+            meetingId: serverInterview.meetingId || serverInterview.meetingId || '',
+            meetingLink: serverInterview.meetingLink || data?.meetingLink || '',
+            passcode: serverInterview.passcode || data?.interview?.passcode || '',
+            description: serverInterview.description || meetingData.description || '',
+            participants: (serverInterview.participants && serverInterview.participants.length > 0)
+              ? serverInterview.participants
+              : participants.map((p) => ({ guestEmail: p })),
+          };
+
+          onSuccess(createdInterview);
+        } catch (err) {
+          // Fallback: still call onSuccess without payload
+          onSuccess();
+        }
       }
       
       // Close modal after a short delay
