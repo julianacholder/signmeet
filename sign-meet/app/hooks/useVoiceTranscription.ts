@@ -43,6 +43,7 @@ export function useVoiceTranscription(
   const isMountedRef = useRef(true);
   const isStartingRef = useRef(false);
   const isStoppingRef = useRef(false);
+  const isActiveRef = useRef(false); // ✅ NEW: Track if recognition is actually active
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -61,6 +62,7 @@ export function useVoiceTranscription(
       recognition.onstart = () => {
         console.log('🎤 Speech recognition started');
         isStartingRef.current = false;
+        isActiveRef.current = true; // ✅ Mark as active
         if (isMountedRef.current) {
           setIsListening(true);
         }
@@ -103,42 +105,59 @@ export function useVoiceTranscription(
         console.error('Speech recognition error:', event.error, event.message);
         
         isStartingRef.current = false;
+        isActiveRef.current = false; // ✅ Mark as inactive
         
         if (isMountedRef.current) {
           setIsListening(false);
         }
 
-        // Don't auto-restart on network errors or permission issues
-        if (event.error === 'network' || event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        // Don't auto-restart on these errors
+        if (
+          event.error === 'network' || 
+          event.error === 'not-allowed' || 
+          event.error === 'service-not-allowed' ||
+          event.error === 'aborted'
+        ) {
           console.error('Speech recognition blocked:', event.error);
+          isStoppingRef.current = true; // Prevent restart
           return;
         }
 
-        // For other errors, restart after a delay
-        setTimeout(() => {
-          if (isMountedRef.current && recognitionRef.current && !isStartingRef.current) {
-            try {
-              isStartingRef.current = true;
-              recognitionRef.current.start();
-            } catch (e) {
-              console.log('Error restarting recognition:', e);
-              isStartingRef.current = false;
+        // For "no-speech" errors, don't restart immediately
+        if (event.error === 'no-speech') {
+          console.log('⏸️ No speech detected, waiting...');
+          return;
+        }
+
+        // For other errors, restart after a delay if not manually stopped
+        if (!isStoppingRef.current) {
+          setTimeout(() => {
+            if (isMountedRef.current && recognitionRef.current && !isStartingRef.current && !isActiveRef.current) {
+              try {
+                isStartingRef.current = true;
+                recognitionRef.current.start();
+              } catch (e) {
+                console.log('Error restarting recognition:', e);
+                isStartingRef.current = false;
+              }
             }
-          }
-        }, 1000);
+          }, 1000);
+        }
       };
 
       recognition.onend = () => {
         console.log('🎤 Speech recognition ended');
         isStartingRef.current = false;
+        isActiveRef.current = false; // ✅ Mark as inactive
+        
         if (isMountedRef.current) {
           setIsListening(false);
         }
         
-        // Only auto-restart if not manually stopped and no errors
-        if (isMountedRef.current && recognitionRef.current && !isStoppingRef.current) {
+        // Only auto-restart if not manually stopped and was expected to be active
+        if (isMountedRef.current && recognitionRef.current && !isStoppingRef.current && !isActiveRef.current) {
           setTimeout(() => {
-            if (isMountedRef.current && recognitionRef.current && !isStoppingRef.current && !isStartingRef.current) {
+            if (isMountedRef.current && recognitionRef.current && !isStoppingRef.current && !isStartingRef.current && !isActiveRef.current) {
               try {
                 isStartingRef.current = true;
                 recognitionRef.current.start();
@@ -172,7 +191,8 @@ export function useVoiceTranscription(
   }, [onPhraseComplete]);
 
   const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening && isSupported && !isStartingRef.current) {
+    // ✅ Check if already active before starting
+    if (recognitionRef.current && !isActiveRef.current && isSupported && !isStartingRef.current) {
       try {
         isStoppingRef.current = false;
         isStartingRef.current = true;
@@ -182,13 +202,16 @@ export function useVoiceTranscription(
         console.log('Recognition start failed:', e);
         isStartingRef.current = false;
       }
+    } else if (isActiveRef.current) {
+      console.log('🎤 Recognition already active, skipping start');
     }
-  }, [isListening, isSupported]);
+  }, [isSupported]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
+    if (recognitionRef.current && (isListening || isActiveRef.current)) {
       try {
         isStoppingRef.current = true;
+        isActiveRef.current = false; // ✅ Mark as inactive
         recognitionRef.current.stop();
         console.log('🎤 Manually stopping speech recognition');
         setIsListening(false);

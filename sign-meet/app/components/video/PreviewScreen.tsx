@@ -83,12 +83,12 @@ export default function PreviewScreen({
   {isFirstToJoin ? (
     <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 border-1 border-gray-400 rounded-full">
       <User className="w-4 h-4" />
-      <p className="text-sm font-medium">You are the first to join</p>
+      <p className="text-sm font-medium text-black">You are the first to join</p>
     </div>
   ) : (
     <div className="inline-flex items-center gap-2 mt-4 px-4 py-2  border-1 border-gray-400 rounded-full">
       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-      <p className="text-sm font-medium ">
+      <p className="text-sm font-medium text-black ">
         {participantCount} {participantCount === 1 ? 'person' : 'people'} in the call
       </p>
     </div>

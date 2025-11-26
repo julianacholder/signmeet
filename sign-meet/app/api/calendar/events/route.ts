@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     // Generate our own meeting data FIRST
     const meetingId = generateMeetingId();
     const passcode = generatePasscode();
-    const meetingLink = `https://signmeet.com/meeting/${meetingId}`;
+    const meetingLink = `https://signmeet.vercel.app/meeting/${meetingId}`;
 
     console.log('📅 Creating calendar event with SignMeet link:', meetingLink);
 

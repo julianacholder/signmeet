@@ -64,7 +64,7 @@ export function useTransformerModel(): UseTransformerModelReturn {
 
       const data = await response.json();
       
-      // ✅ FIXED: Include all three fields from server response
+      //  FIXED: Include all three fields from server response
       return {
         sign: data.sign,          // e.g., "hello"
         english: data.english,    // e.g., "Hello"

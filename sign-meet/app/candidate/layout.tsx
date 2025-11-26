@@ -18,7 +18,7 @@ export default async function CandidateLayout({
         <div className="flex-1 flex flex-col overflow-hidden">
           <TopNavBar userName="Juliana" userInitials="JU" />
           
-          <main className="flex-1 overflow-auto bg-white dark:bg-background">
+          <main className="flex-1 overflow-auto bg-gray-50 dark:bg-background">
             {children}
           </main>
         </div>

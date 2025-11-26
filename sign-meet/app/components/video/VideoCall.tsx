@@ -40,6 +40,56 @@ interface CurrentTranscription {
   isLocal: boolean;
 }
 
+// Helper function for consistent female voice - OUTSIDE component
+const speakWithFemaleVoice = (text: string) => {
+  console.log('🔊 speakWithFemaleVoice called with:', text);
+  
+  if (!('speechSynthesis' in window)) {
+    console.error('❌ speechSynthesis not available');
+    return;
+  }
+  
+  window.speechSynthesis.cancel();
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  
+  // Wait for voices to load
+  const setVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    console.log('🔊 Available voices:', voices.length);
+    
+    const femaleVoice = voices.find(voice => 
+      voice.lang.startsWith('en') && (
+        voice.name.toLowerCase().includes('female') ||
+        voice.name.toLowerCase().includes('samantha') ||
+        voice.name.toLowerCase().includes('victoria') ||
+        voice.name.toLowerCase().includes('zira')
+      )
+    ) || voices.find(voice => voice.lang.startsWith('en'));
+    
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+      console.log('🔊 Using voice on remote device:', femaleVoice.name);
+    } else {
+      console.log('⚠️ No specific female voice found, using default');
+    }
+    
+    window.speechSynthesis.speak(utterance);
+    console.log('✅ Speech synthesis started');
+  };
+  
+  // Voices might not be loaded immediately
+  if (window.speechSynthesis.getVoices().length > 0) {
+    setVoice();
+  } else {
+    console.log('⏳ Waiting for voices to load...');
+    window.speechSynthesis.onvoiceschanged = setVoice;
+  }
+};
+
 export default function VideoCall({
   meetingId,
   userId,
@@ -60,45 +110,6 @@ export default function VideoCall({
   const [isInitialized, setIsInitialized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Helper function for consistent female voice
-const speakWithFemaleVoice = (text: string) => {
-  if (!('speechSynthesis' in window)) return;
-  
-  window.speechSynthesis.cancel();
-  
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.9;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-  
-  // Wait for voices to load
-  const setVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-    const femaleVoice = voices.find(voice => 
-      voice.lang.startsWith('en') && (
-        voice.name.toLowerCase().includes('female') ||
-        voice.name.toLowerCase().includes('samantha') ||
-        voice.name.toLowerCase().includes('victoria') ||
-        voice.name.toLowerCase().includes('zira')
-      )
-    ) || voices.find(voice => voice.lang.startsWith('en'));
-    
-    if (femaleVoice) {
-      utterance.voice = femaleVoice;
-      console.log('🔊 Using voice on remote device:', femaleVoice.name);
-    }
-    
-    window.speechSynthesis.speak(utterance);
-  };
-  
-  // Voices might not be loaded immediately
-  if (window.speechSynthesis.getVoices().length > 0) {
-    setVoice();
-  } else {
-    window.speechSynthesis.onvoiceschanged = setVoice;
-  }
-};
-
   // Single current transcription state
   const [currentTranscription, setCurrentTranscription] = useState<CurrentTranscription>({
     text: '',
@@ -108,7 +119,14 @@ const speakWithFemaleVoice = (text: string) => {
   });
 
   const [signConfidence, setSignConfidence] = useState<number>(0);
-  const [remoteTranscriptForCandidate, setRemoteTranscriptForCandidate] = useState<string>(''); 
+  const [remoteTranscriptForCandidate, setRemoteTranscriptForCandidate] = useState<string>('');
+  
+  // ✅ NEW: Model prediction state
+  const [modelPrediction, setModelPrediction] = useState<{
+    sign: string;
+    confidence: number;
+    english: string;
+  } | null>(null);
 
   // Determine user type
   const isCandidate = profile?.user_type === 'deaf' || userRole === 'candidate';
@@ -125,42 +143,42 @@ const speakWithFemaleVoice = (text: string) => {
   } = useMediaDevices();
 
   // Handle received transcriptions from remote peer
- const handleTranscriptionReceived = useCallback((message: any) => {
-  console.log('📨 RAW MESSAGE RECEIVED:', JSON.stringify(message, null, 2));
-  
-  const shouldSpeak = message.shouldSpeak === true || message.shouldSpeak === 'true';
-  
-  console.log('📨 Received transcription:', message.text, 'shouldSpeak:', shouldSpeak, '(raw:', message.shouldSpeak, ')');
-  console.log('🔍 Current user type check - isCompanyOrGuest:', isCompanyOrGuest, 'isCandidate:', isCandidate);
-  
-  setCurrentTranscription({
-    text: message.text,
-    speaker: message.sender,
-    speakerRole: message.senderRole,
-    isLocal: false
-  });
-
-  // ✅ If candidate, feed to SignDetector
-  if (isCandidate) {
-    console.log('📝 Feeding to SignDetector (candidate mode)');
-    setRemoteTranscriptForCandidate(message.text);
-  }
-
-  // ✅ If this is from a candidate and should be spoken, speak it
-  if (shouldSpeak) {
-    console.log('🔊 shouldSpeak is TRUE, checking if we should speak...');
-    console.log('🔊 isCompanyOrGuest:', isCompanyOrGuest);
+  const handleTranscriptionReceived = useCallback((message: any) => {
+    console.log('📨 RAW MESSAGE RECEIVED:', JSON.stringify(message, null, 2));
     
-    if (isCompanyOrGuest && 'speechSynthesis' in window) {
-      console.log('✅ SPEAKING on remote device:', message.text);
-      speakWithFemaleVoice(message.text);
-    } else {
-      console.log('❌ NOT speaking - isCompanyOrGuest:', isCompanyOrGuest, 'speechSynthesis available:', 'speechSynthesis' in window);
+    const shouldSpeak = message.shouldSpeak === true || message.shouldSpeak === 'true';
+    
+    console.log('📨 Received transcription:', message.text, 'shouldSpeak:', shouldSpeak, '(raw:', message.shouldSpeak, ')');
+    console.log('🔍 Current user type check - isCompanyOrGuest:', isCompanyOrGuest, 'isCandidate:', isCandidate);
+    
+    setCurrentTranscription({
+      text: message.text,
+      speaker: message.sender,
+      speakerRole: message.senderRole,
+      isLocal: false
+    });
+
+    // ✅ If candidate, feed to SignDetector
+    if (isCandidate) {
+      console.log('📝 Feeding to SignDetector (candidate mode)');
+      setRemoteTranscriptForCandidate(message.text);
     }
-  } else {
-    console.log('⏭️ Skipping speech - shouldSpeak is false');
-  }
-}, [isCandidate, isCompanyOrGuest]);
+
+    // ✅ If this is from a candidate and should be spoken, speak it
+    if (shouldSpeak) {
+      console.log('🔊 shouldSpeak is TRUE, checking if we should speak...');
+      console.log('🔊 isCompanyOrGuest:', isCompanyOrGuest);
+      
+      if (isCompanyOrGuest && 'speechSynthesis' in window) {
+        console.log('✅ SPEAKING on remote device:', message.text);
+        speakWithFemaleVoice(message.text);
+      } else {
+        console.log('❌ NOT speaking - isCompanyOrGuest:', isCompanyOrGuest, 'speechSynthesis available:', 'speechSynthesis' in window);
+      }
+    } else {
+      console.log('⏭️ Skipping speech - shouldSpeak is false');
+    }
+  }, [isCandidate, isCompanyOrGuest]);
 
   const {
     peer,
@@ -247,64 +265,73 @@ const speakWithFemaleVoice = (text: string) => {
     }
   }, [audioEnabled, isCompanyOrGuest, voiceSupported, isListening, startListening, stopListening]);
 
-const handleSignDetected = useCallback((sign: string, text: string, confidence: number) => {
-  console.log('👋 Sign detected:', text);
-  
-  setSignConfidence(confidence);
-  
-  // Update local display immediately
-  setCurrentTranscription({
-    text,
-    speaker: userName,
-    speakerRole: userRole,
-    isLocal: true
-  });
+  const handleSignDetected = useCallback((sign: string, text: string, confidence: number) => {
+    console.log('👋 Sign detected:', text);
+    
+    setSignConfidence(confidence);
+    
+    // Update local display immediately
+    setCurrentTranscription({
+      text,
+      speaker: userName,
+      speakerRole: userRole,
+      isLocal: true
+    });
 
-  // ✅ SPEAK THE TEXT ALOUD locally with FEMALE VOICE
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    
-    // Wait for voices to load and select female voice
-    const setVoice = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const femaleVoice = voices.find(voice => 
-        voice.lang.startsWith('en') && (
-          voice.name.toLowerCase().includes('female') ||
-          voice.name.toLowerCase().includes('samantha') ||
-          voice.name.toLowerCase().includes('victoria') ||
-          voice.name.toLowerCase().includes('zira')
-        )
-      ) || voices.find(voice => voice.lang.startsWith('en'));
+    // ✅ SPEAK THE TEXT ALOUD locally with FEMALE VOICE
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
       
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
-        console.log('🔊 Using voice on signer device:', femaleVoice.name);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      // Wait for voices to load and select female voice
+      const setVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const femaleVoice = voices.find(voice => 
+          voice.lang.startsWith('en') && (
+            voice.name.toLowerCase().includes('female') ||
+            voice.name.toLowerCase().includes('samantha') ||
+            voice.name.toLowerCase().includes('victoria') ||
+            voice.name.toLowerCase().includes('zira')
+          )
+        ) || voices.find(voice => voice.lang.startsWith('en'));
+        
+        if (femaleVoice) {
+          utterance.voice = femaleVoice;
+          console.log('🔊 Using voice on signer device:', femaleVoice.name);
+        }
+        
+        window.speechSynthesis.speak(utterance);
+      };
+      
+      // Voices might not be loaded immediately
+      if (window.speechSynthesis.getVoices().length > 0) {
+        setVoice();
+      } else {
+        window.speechSynthesis.onvoiceschanged = setVoice;
       }
-      
-      window.speechSynthesis.speak(utterance);
-    };
-    
-    // Voices might not be loaded immediately
-    if (window.speechSynthesis.getVoices().length > 0) {
-      setVoice();
-    } else {
-      window.speechSynthesis.onvoiceschanged = setVoice;
     }
-  }
 
-  // ✅ Send to remote IMMEDIATELY with forced boolean
-  sendTranscription(text, {
-    sender: userName,
-    senderRole: userRole,
-    shouldSpeak: true // 👈 Remote will also speak this
-  });
+    // ✅ Send to remote IMMEDIATELY with forced boolean
+    sendTranscription(text, {
+      sender: userName,
+      senderRole: userRole,
+      shouldSpeak: true // 👈 Remote will also speak this
+    });
 
-}, [userName, userRole, sendTranscription]);
+  }, [userName, userRole, sendTranscription]);
+
+  // ✅ NEW: Handle model predictions from SignDetector
+  const handleModelPrediction = useCallback((prediction: { sign: string; confidence: number; english: string }) => {
+    console.log('🤖 Model prediction received:', prediction);
+    setModelPrediction(prediction);
+    
+    // Clear after 5 seconds
+    setTimeout(() => setModelPrediction(null), 5000);
+  }, []);
 
   // Initialize video call
   useEffect(() => {
@@ -567,7 +594,7 @@ const handleSignDetected = useCallback((sign: string, text: string, confidence: 
                     </div>
                   )}
                   
-                  {/* SignDetector ONLY for candidates - NOW RECEIVES REMOTE TRANSCRIPT */}
+                  {/* SignDetector ONLY for candidates */}
                   {isCandidate && isInitialized && localStream && videoReady && (
                     <div className="absolute inset-0 w-full h-full pointer-events-none z-10">
                       <SignDetector
@@ -579,7 +606,8 @@ const handleSignDetected = useCallback((sign: string, text: string, confidence: 
                         onTranscriptionUpdate={(text) => {
                           // Optional: show interim sign detection
                         }}
-                        remoteTranscript={remoteTranscriptForCandidate} // ✅ PASS INTERVIEWER'S SPEECH
+                        onModelPrediction={handleModelPrediction}
+                        remoteTranscript={remoteTranscriptForCandidate}
                       />
                     </div>
                   )}
@@ -628,7 +656,7 @@ const handleSignDetected = useCallback((sign: string, text: string, confidence: 
             </div>
           </div>
 
-          {/* Live Transcription Box - ONE LINE */}
+          {/* Live Transcription Box */}
           <div className="mx-6 mb-3 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700/50 flex-shrink-0" style={{ minHeight: '100px' }}>
             <LiveTranscription
               currentText={currentTranscription.text}
@@ -712,6 +740,24 @@ const handleSignDetected = useCallback((sign: string, text: string, confidence: 
                     confidence={signConfidence * 100}
                     templateResponses={79}
                   />
+                  
+                  {/* ✅ ML Model Prediction Display */}
+                  {/* {modelPrediction && (
+                    <div className="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg">
+                      <div className="text-xs font-semibold text-blue-400 mb-2">
+                        🤖 ML Model Prediction
+                      </div>
+                      <div className="text-sm text-white">
+                        Sign: <span className="font-mono">{modelPrediction.sign}</span>
+                      </div>
+                      <div className="text-sm text-white">
+                        English: {modelPrediction.english}
+                      </div>
+                      <div className="text-sm text-white">
+                        Confidence: {(modelPrediction.confidence * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  )} */}
                 </div>
               )}
 
@@ -734,19 +780,6 @@ const handleSignDetected = useCallback((sign: string, text: string, confidence: 
               )}
             </>
           )}
-          {/* Add this temporary debug button to your VideoCall JSX */}
-{isCompanyOrGuest && (
-  <button 
-    onClick={() => {
-      console.log('🔊 Testing remote speech synthesis');
-      const utterance = new SpeechSynthesisUtterance('Test speech from remote');
-      window.speechSynthesis.speak(utterance);
-    }}
-    className="fixed bottom-20 left-4 bg-green-500 text-white p-2 rounded z-50"
-  >
-    Test Remote Speech
-  </button>
-)}
         </div>
       </div>
 

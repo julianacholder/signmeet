@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMediaPipeHands } from '@/app/hooks/useMediaPipeHands';
+import { DEMO_QUESTIONS, QUESTION_KEYWORDS, DemoQuestion } from '@/app/config/demoQuestions';
+import { mlApi } from '@/app/services/mlApi';
 
 interface SignDetectorProps {
   videoStream: MediaStream | null;
@@ -10,50 +12,18 @@ interface SignDetectorProps {
   userProfile?: any;
   onSignDetected?: (sign: string, text: string, confidence: number) => void;
   onTranscriptionUpdate?: (text: string) => void;
-  remoteTranscript?: string; // ✅ NEW: Receive interviewer's speech
+  onModelPrediction?: (prediction: { sign: string; confidence: number; english: string }) => void;
+  remoteTranscript?: string;
 }
-
-// ✅ DEMO SIGNS - Add your interview responses here
-const DEMO_SIGNS = {
-  experience: [
-    { sign: 'i', english: 'I', confidence: 0.92 },
-    { sign: 'have', english: 'have', confidence: 0.90 },
-    { sign: 'experience', english: 'experience', confidence: 0.93 },
-    { sign: 'work', english: 'working', confidence: 0.91 },
-    { sign: 'rwanda', english: 'in Rwanda', confidence: 0.88 },
-  ],
-  introduce: [
-    { sign: 'hello', english: 'Hello', confidence: 0.95 },
-    { sign: 'name', english: 'my name is', confidence: 0.93 },
-    { sign: 'crystal', english: 'Crystal', confidence: 0.91 },
-    { sign: 'from', english: 'from', confidence: 0.89 },
-    { sign: 'rwanda', english: 'Rwanda', confidence: 0.94 },
-  ],
-  skills: [
-    { sign: 'i', english: 'I', confidence: 0.90 },
-    { sign: 'have', english: 'have', confidence: 0.89 },
-    { sign: 'skills', english: 'skills in', confidence: 0.94 },
-    { sign: 'leadership', english: 'leadership', confidence: 0.92 },
-    { sign: 'communication', english: 'and communication', confidence: 0.91 },
-  ],
-  hello: [
-    { sign: 'hello', english: 'Hello', confidence: 0.95 },
-    { sign: 'nice', english: 'nice', confidence: 0.93 },
-    { sign: 'meet', english: 'to meet', confidence: 0.92 },
-    { sign: 'you', english: 'you', confidence: 0.91 },
-  ],
-  thankyou: [
-    { sign: 'thank', english: 'Thank', confidence: 0.94 },
-    { sign: 'you', english: 'you', confidence: 0.93 },
-    { sign: 'much', english: 'very much', confidence: 0.92 },
-  ],
-};
 
 export default function SignDetector({
   videoStream,
+  userName,
+  userProfile,
   onSignDetected,
   onTranscriptionUpdate,
-  remoteTranscript = '' // ✅ NEW: Receive remote speech
+  onModelPrediction,
+  remoteTranscript = ''
 }: SignDetectorProps) {
   const hiddenVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,11 +33,15 @@ export default function SignDetector({
   const drawingUtilsRef = useRef<any>(null);
   const handsDetectedRef = useRef<boolean>(false);
   
-  // ✅ AUTO-TRIGGER STATE
-  const [activeSigns, setActiveSigns] = useState<any[]>([]);
+  // Demo state
+  const [activeQuestion, setActiveQuestion] = useState<DemoQuestion | null>(null);
   const [currentSignIndex, setCurrentSignIndex] = useState(0);
   const lastTriggerRef = useRef<number>(0);
   const processedTranscriptsRef = useRef<Set<string>>(new Set());
+  
+  // Landmarks buffer for ML model (30 frames)
+  const landmarksBufferRef = useRef<number[][]>([]);
+  const [mlModelStatus, setMlModelStatus] = useState<'idle' | 'sending' | 'received'>('idle');
 
   useEffect(() => {
     const loadDrawingUtils = async () => {
@@ -87,98 +61,169 @@ export default function SignDetector({
     loadDrawingUtils();
   }, []);
 
- 
-useEffect(() => {
-  if (!remoteTranscript || remoteTranscript.trim().length === 0) {
-    return;
-  }
+  // ✅ Keyboard trigger listener (1-6 keys)
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const key = e.key;
+      const question = DEMO_QUESTIONS.find(q => q.key === key);
+      
+      if (question) {
+        console.log(`⌨️ Keyboard trigger: ${key} → ${question.question}`);
+        triggerQuestion(question);
+      }
+    };
 
-  const transcript = remoteTranscript.toLowerCase();
-  console.log('👂 Processing remote transcript:', transcript);
-  
-  // Avoid processing the same transcript multiple times
-  if (processedTranscriptsRef.current.has(transcript)) {
-    return;
-  }
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [userProfile]);
 
-  // More flexible keyword matching
-  const words = transcript.split(/\s+/);
-  let matchedSigns = null;
-
-  // Check for keywords in any position
-  if (words.some(word => word.includes('experience') || words.some(word => word.includes('worked')))) {
-    console.log('✅ TRIGGERING: experience signs');
-    matchedSigns = DEMO_SIGNS.experience;
-  } else if (words.some(word => word.includes('introduce') || words.some(word => word.includes('yourself')) || 
-             words.some(word => word.includes('tell')) && words.some(word => word.includes('about')))) {
-    console.log('✅ TRIGGERING: introduce signs');
-    matchedSigns = DEMO_SIGNS.introduce;
-  } else if (words.some(word => word.includes('skill'))) {
-    console.log('✅ TRIGGERING: skills signs');
-    matchedSigns = DEMO_SIGNS.skills;
-  } else if (words.some(word => word.includes('hello') || words.some(word => word.includes('hi')))) {
-    console.log('✅ TRIGGERING: hello signs');
-    matchedSigns = DEMO_SIGNS.hello;
-  } else if (words.some(word => word.includes('thank'))) {
-    console.log('✅ TRIGGERING: thank you signs');
-    matchedSigns = DEMO_SIGNS.thankyou;
-  }
-
-  if (matchedSigns) {
-    setActiveSigns(matchedSigns);
-    setCurrentSignIndex(0);
-    lastTriggerRef.current = Date.now();
-    processedTranscriptsRef.current.add(transcript);
-    
-    // Clean up old transcripts (keep only last 5)
-    if (processedTranscriptsRef.current.size > 5) {
-      const arr = Array.from(processedTranscriptsRef.current);
-      processedTranscriptsRef.current = new Set(arr.slice(-5));
-    }
-  }
-}, [remoteTranscript]);
-
-  // AUTO-TRIGGER TIMER (runs every frame when hands present)
-
-useEffect(() => {
-  if (activeSigns.length === 0 || currentSignIndex >= activeSigns.length) {
-    return;
-  }
-
-  const interval = setInterval(() => {
-    if (!handsDetectedRef.current) {
-      console.log('⏸️ Waiting for hands...');
+  // ✅ Remote transcript trigger (interviewer voice ONLY)
+  useEffect(() => {
+    if (!remoteTranscript || remoteTranscript.trim().length === 0) {
       return;
     }
 
-    const now = Date.now();
-    if (now - lastTriggerRef.current < 2500) {
-      return; // Wait 2.5 seconds between signs
+    const transcript = remoteTranscript.toLowerCase();
+    console.log('👂 Processing remote transcript:', transcript);
+    
+    if (processedTranscriptsRef.current.has(transcript)) {
+      return;
     }
 
-    lastTriggerRef.current = now;
-    const sign = activeSigns[currentSignIndex];
+    const words = transcript.split(/\s+/);
     
-    console.log(`✅ Sign ${currentSignIndex + 1}/${activeSigns.length}:`, sign.sign);
-    
-    setCurrentSign(sign.sign);
-    setConfidence(sign.confidence);
-    
-    onSignDetected?.(sign.sign, sign.english, sign.confidence);
-    onTranscriptionUpdate?.(sign.english);
-    
-    // 🚨 REMOVE THIS LINE - Let VideoCall handle speech synthesis
-    // speak(sign.english);
-    
-    setCurrentSignIndex(prev => prev + 1);
-  }, 100);
+    // Find matching question by keywords
+    for (const word of words) {
+      const questionId = QUESTION_KEYWORDS[word];
+      if (questionId) {
+        const question = DEMO_QUESTIONS.find(q => q.id === questionId);
+        if (question) {
+          console.log(`✅ Voice trigger: "${word}" → ${question.question}`);
+          triggerQuestion(question);
+          processedTranscriptsRef.current.add(transcript);
+          
+          // Clean up old transcripts
+          if (processedTranscriptsRef.current.size > 5) {
+            const arr = Array.from(processedTranscriptsRef.current);
+            processedTranscriptsRef.current = new Set(arr.slice(-5));
+          }
+          
+          break;
+        }
+      }
+    }
+  }, [remoteTranscript, userProfile]);
 
-  return () => clearInterval(interval);
-}, [activeSigns, currentSignIndex, onSignDetected, onTranscriptionUpdate]);
+  const triggerQuestion = useCallback((question: DemoQuestion) => {
+    console.log('🎯 Triggering question:', question.question);
+    setActiveQuestion(question);
+    setCurrentSignIndex(0);
+    lastTriggerRef.current = Date.now();
+    landmarksBufferRef.current = []; // Reset landmarks buffer
+  }, []);
+
+  // Auto-play signs when question is active
+  useEffect(() => {
+    if (!activeQuestion || currentSignIndex >= activeQuestion.signs.length) {
+      if (activeQuestion && currentSignIndex >= activeQuestion.signs.length) {
+        // Sequence complete
+        console.log('✅ Question sequence complete');
+        setTimeout(() => {
+          setActiveQuestion(null);
+          setCurrentSignIndex(0);
+        }, 1000);
+      }
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (!handsDetectedRef.current) {
+        console.log('⏸️ Waiting for hands...');
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastTriggerRef.current < 2500) {
+        return; // Wait 2.5 seconds between signs
+      }
+
+      lastTriggerRef.current = now;
+      const signStep = activeQuestion.signs[currentSignIndex];
+      
+      console.log(`✅ Sign ${currentSignIndex + 1}/${activeQuestion.signs.length}:`, signStep.sign);
+      
+      setCurrentSign(signStep.sign);
+      setConfidence(signStep.confidence);
+      
+      // Send to ML API if we have 30 frames
+      if (landmarksBufferRef.current.length >= 30) {
+        sendToMLModel(signStep.sign);
+      }
+      
+      onSignDetected?.(signStep.sign, signStep.english, signStep.confidence);
+      onTranscriptionUpdate?.(signStep.english);
+      
+      // Move to next sign
+      setCurrentSignIndex(prev => prev + 1);
+      
+      // If this is the last sign, send the complete response
+      if (currentSignIndex === activeQuestion.signs.length - 1) {
+        const fullResponse = activeQuestion.templateResponse(userProfile);
+        setTimeout(() => {
+          onSignDetected?.(
+            'complete',
+            fullResponse,
+            0.95
+          );
+        }, 500);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [activeQuestion, currentSignIndex, onSignDetected, onTranscriptionUpdate, userProfile]);
+
+  const sendToMLModel = useCallback(async (expectedSign: string) => {
+    if (landmarksBufferRef.current.length < 30) {
+      console.log('⚠️ Not enough frames for ML prediction');
+      return;
+    }
+
+    setMlModelStatus('sending');
+    console.log('📤 Sending 30 frames to ML model...');
+    console.log('🎭 Expected sign:', expectedSign);
+    
+    // Take last 30 frames
+    const sequence = landmarksBufferRef.current.slice(-30);
+    
+    // ✅ Pass expected sign for demo mode
+    const prediction = await mlApi.predict(
+      sequence, 
+      expectedSign,  // This tells API what sign to return
+      true          // Enable demo mode
+    );
+    
+    setMlModelStatus('received');
+    console.log('🤖 ML Model prediction:', prediction);
+    
+    onModelPrediction?.(prediction);
+    
+    // Reset status after 2 seconds
+    setTimeout(() => setMlModelStatus('idle'), 2000);
+  }, [onModelPrediction]);
 
   const handleLandmarks = useCallback(async (landmarks: number[], results: any) => {
     const handsPresent = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
     handsDetectedRef.current = handsPresent;
+
+    // Store landmarks for ML model (keep last 30 frames)
+    if (handsPresent && landmarks.length === 126) {
+      landmarksBufferRef.current.push(landmarks);
+      
+      // Keep only last 30 frames
+      if (landmarksBufferRef.current.length > 30) {
+        landmarksBufferRef.current.shift();
+      }
+    }
 
     // Draw hands
     if (canvasRef.current && handsPresent && drawingUtilsRef.current) {
@@ -251,17 +296,6 @@ useEffect(() => {
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, [videoStream]);
 
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
   return (
     <>
       <video
@@ -285,30 +319,7 @@ useEffect(() => {
         }}
       />
 
-      {/* Status display */}
-      <div className="fixed top-4 right-4 bg-black/90 text-white p-3 rounded-lg text-xs space-y-1 z-50 font-mono">
-        <div className="text-blue-400 font-bold">
-          🎤 Voice Interview Mode
-        </div>
-        {activeSigns.length > 0 && (
-          <div className="text-green-400">
-            Responding... ({currentSignIndex}/{activeSigns.length})
-          </div>
-        )}
-        <div className={mediaPipeReady ? 'text-green-400' : 'text-yellow-400'}>
-          MediaPipe: {mediaPipeReady ? '✅ Ready' : '⏳ Loading'}
-        </div>
-        <div className={handsDetectedRef.current ? 'text-green-400' : 'text-gray-400'}>
-          Hands: {handsDetectedRef.current ? '✅ Detected' : '❌ None'}
-        </div>
-        <div>Sign: {currentSign || 'none'}</div>
-        <div>Confidence: {(confidence * 100).toFixed(1)}%</div>
-        {remoteTranscript && (
-          <div className="text-xs text-gray-400 pt-2 border-t">
-            Heard: "{remoteTranscript.slice(-50)}"
-          </div>
-        )}
-      </div>
+      
     </>
   );
 }
